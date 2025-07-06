@@ -1,134 +1,78 @@
-import React, { useState } from 'react';
-import { useApi } from '../hooks/useApi';
+import React from 'react'
 
 const HomePage: React.FC = () => {
-  const [form, setForm] = useState({ name: '', email: '', pass: '' });
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
-  const { post } = useApi();
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    setSuccess('');
-    try {
-      const res = await post('/auth/register', {
-        name: form.name,
-        email: form.email,
-        pass: form.pass,
-      });
-      if (res.ok) {
-        setSuccess('Thank you for signing up! You will receive a 10% coupon when the store opens.');
-        setForm({ name: '', email: '', pass: '' });
-      } else {
-        const data = await res.json();
-        setError(data.message || 'Signup failed. Please try again.');
-      }
-    } catch (err) {
-      setError('Signup failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText('VOLTX15');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center px-2 sm:px-4 bg-gradient-to-br from-blue-700 via-blue-400 to-blue-900">
-      <div className="w-full max-w-md sm:max-w-lg md:max-w-md mx-auto text-center p-4 sm:p-8 rounded-lg shadow-lg border border-gray-100 bg-white">
-        <h2 className="text-xl sm:text-2xl font-bold text-blue-700 mb-3 sm:mb-4 tracking-wide uppercase">Coming Soon</h2>
-        <img
-          src="/voltx.jpg"
-          alt="VoltX Logo"
-          className="w-20 h-20 sm:w-28 sm:h-28 mx-auto mb-4 sm:mb-6 rounded-lg object-contain bg-white"
-        />
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 text-gray-900">VoltX Store</h1>
-        <p className="mb-4 sm:mb-6 text-gray-700 text-base sm:text-lg font-medium">
-          Sign up now and get a <span className="text-blue-600 font-bold">15% coupon</span> when the store opens!
-        </p>
-        {success ? (
-          <div className="flex flex-col items-center justify-center mt-6 sm:mt-8">
-            <div className="text-base sm:text-lg text-green-700 font-semibold mb-3 sm:mb-4">{success}</div>
-            <div className="bg-gradient-to-r from-blue-500 to-blue-700 rounded-xl px-4 sm:px-6 py-4 sm:py-5 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 shadow-lg w-full max-w-xs mx-auto">
-              <span className="text-lg sm:text-2xl font-mono font-bold text-white tracking-widest select-all">VOLTX15</span>
-              <button
-                onClick={handleCopy}
-                className={`mt-2 sm:mt-0 ml-0 sm:ml-2 px-4 py-2 rounded-lg bg-white text-blue-700 font-semibold shadow transition-all duration-200 hover:bg-blue-100 active:scale-95 border border-blue-200 flex items-center gap-2`}
-              >
-                {copied ? (
-                  <>
-                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" /><rect x="3" y="3" width="13" height="13" rx="2" /></svg>
-                    Copy
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="mt-3 sm:mt-4 text-blue-700 text-xs sm:text-sm">Use this code for 10% off when we launch!</div>
-          </div>
-        ) : (
-          <>
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-              <input
-                type="text"
-                name="name"
-                placeholder="Your Name"
-                value={form.name}
-                onChange={handleChange}
-                className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                required
-              />
-              <input
-                type="email"
-                name="email"
-                placeholder="Email Address"
-                value={form.email}
-                onChange={handleChange}
-                className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                required
-              />
-              <input
-                type="password"
-                name="pass"
-                placeholder="Password"
-                value={form.pass}
-                onChange={handleChange}
-                className="w-full px-3 py-2 sm:px-4 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm sm:text-base"
-                required
-              />
-              <button
-                type="submit"
-                className="w-full py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-60 text-sm sm:text-base"
-                disabled={loading}
-              >
-                {loading ? 'Signing Up...' : 'Sign Up Early'}
-              </button>
-            </form>
-            {error && <div className="mt-3 sm:mt-4 text-red-600 font-semibold text-sm sm:text-base">{error}</div>}
-          </>
-        )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-black opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }}></div>
       </div>
-      {/*
-        To display the logo, place your logo image as 'frontend/main/public/voltx.jpg'.
-        The public folder is where Vite serves static assets from.
-      */}
-    </div>
-  );
-};
 
-export default HomePage; 
+      <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
+        <div className="text-center">
+          {/* Logo/Brand */}
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-white bg-opacity-20 rounded-full mb-4">
+              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h1 className="text-5xl md:text-7xl font-bold text-white mb-4">
+              VoltX <span className="text-blue-300">Store</span>
+            </h1>
+          </div>
+
+          {/* Coming Soon Message */}
+          <div>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Something <span className="text-blue-300">Amazing</span> is Coming
+            </h2>
+            <p className="text-xl md:text-2xl text-blue-100 mb-8 max-w-3xl mx-auto leading-relaxed">
+              We're building the future of electronics retail. Get ready for an incredible shopping experience with cutting-edge technology and exceptional service.
+            </p>
+          </div>
+
+          {/* Features Preview */}
+          <div className="mt-16">
+            <h3 className="text-2xl font-semibold text-white mb-8">What to Expect</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              <div className="bg-white bg-opacity-5 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-10 hover:bg-opacity-10 transition-all duration-300">
+                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Premium Products</h4>
+                <p className="text-blue-200 text-sm">Curated selection of the latest electronics and gadgets from top brands.</p>
+              </div>
+              
+              <div className="bg-white bg-opacity-5 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-10 hover:bg-opacity-10 transition-all duration-300">
+                <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">Fast Delivery</h4>
+                <p className="text-blue-200 text-sm">Lightning-fast shipping with real-time tracking and secure packaging.</p>
+              </div>
+              
+              <div className="bg-white bg-opacity-5 backdrop-blur-sm rounded-lg p-6 border border-white border-opacity-10 hover:bg-opacity-10 transition-all duration-300">
+                <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192L5.636 18.364M12 2.25a9.75 9.75 0 109.75 9.75A9.75 9.75 0 0012 2.25z" />
+                  </svg>
+                </div>
+                <h4 className="text-lg font-semibold text-white mb-2">24/7 Support</h4>
+                <p className="text-blue-200 text-sm">Round-the-clock customer service with expert technical support.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default HomePage
