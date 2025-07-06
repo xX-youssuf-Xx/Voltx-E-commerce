@@ -43,4 +43,17 @@ export async function verify(req: AuthRequest, res: Response) {
   } catch (err: any) {
     return res.status(401).json({ error: "Invalid token" });
   }
+}
+
+export async function me(req: AuthRequest, res: Response) {
+  try {
+    return res.json({
+      user_id: req.user?.user_id,
+      name: req.user?.name,
+      email: req.user?.email,
+      role_id: req.user?.role_id
+    });
+  } catch (err: any) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
 } 

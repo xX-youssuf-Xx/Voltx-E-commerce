@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth";
 import productsRoutes from "./routes/products";
 import categoriesRoutes from "./routes/categories";
 import brandsRoutes from "./routes/brands";
+import discountsRouter from './routes/discounts';
 import { Client } from "pg";
 
 const app = express();
@@ -55,6 +56,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/brands", brandsRoutes);
+app.use("/api/discounts", discountsRouter);
 
 const PORT = process.env.PORT || 3005;
 app.listen(PORT, () => {

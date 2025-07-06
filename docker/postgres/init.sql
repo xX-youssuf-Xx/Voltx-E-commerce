@@ -215,6 +215,7 @@ CREATE TABLE discounts (
     
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by BIGINT,
+    application_id BIGINT,
     
     FOREIGN KEY (created_by) REFERENCES users(user_id)
 );

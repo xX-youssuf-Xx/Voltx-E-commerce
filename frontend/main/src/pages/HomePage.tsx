@@ -39,7 +39,7 @@ const HomePage: React.FC = () => {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('VOLTX10');
+    navigator.clipboard.writeText('VOLTX15');
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
