@@ -130,7 +130,7 @@ const ProductsPage: React.FC = () => {
   });
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
-  const MEDIA_BASE = import.meta.env.VITE_MEDIA_BASE_URL;
+  const MEDIA_BASE = import.meta.env.VITE_API_MEDIA_URL;
 
   // Color options for custom status
   const colorOptions = [
