@@ -38,14 +38,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem('authToken')
       if (storedToken) {
-        // For now, just set the token and let the user try to use it
-        // The API calls will fail if the token is invalid
         setToken(storedToken)
-        console.log('Token restored from localStorage:', storedToken)
+        try {
+          const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
+            headers: { 'Authorization': `Bearer ${storedToken}` }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setUser({
+              id: data.user_id,
+              email: data.email,
+              name: data.name,
+              role: String(data.role_id),
+            })
+          } else {
+            setUser(null)
+            setToken(null)
+            localStorage.removeItem('authToken')
+          }
+        } catch (err) {
+          setUser(null)
+          setToken(null)
+          localStorage.removeItem('authToken')
+        }
       }
       setIsLoading(false)
     }
-
     initAuth()
   }, [])
 
