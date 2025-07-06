@@ -130,6 +130,7 @@ const ProductsPage: React.FC = () => {
   });
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL;
+  const MEDIA_BASE = import.meta.env.VITE_MEDIA_BASE_URL;
 
   // Color options for custom status
   const colorOptions = [
@@ -596,7 +597,7 @@ const ProductsPage: React.FC = () => {
   // Handle product name click
   const handleProductNameClick = (e: React.MouseEvent, productId: number) => {
     e.stopPropagation();
-    window.open(`http://localhost:3000/product/${productId}`, '_blank');
+    window.open(`${MEDIA_BASE}/product/${productId}`, '_blank');
   };
 
   // Test token storage
@@ -767,7 +768,7 @@ const ProductsPage: React.FC = () => {
                       <div className="flex-shrink-0">
                         {product.primary_media ? (
                           <img
-                            src={`http://localhost:3005${product.primary_media}`}
+                            src={`${MEDIA_BASE}${product.primary_media}`}
                             alt={product.name}
                             className="w-16 h-16 object-cover rounded-lg"
                           />
