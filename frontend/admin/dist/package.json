@@ -1,0 +1,12 @@
+{
+  "name": "voltx-admin",
+  "version": "1.0.0",
+  "description": "VoltX E-commerce Admin Panel",
+  "scripts": {
+    "start": "node serve.js",
+    "serve": "node serve.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

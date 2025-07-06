@@ -21,11 +21,14 @@ const router = Router();
 
 // Public
 router.get("/", productController.listProducts); // filter, list
+router.get("/paginated", productController.getPaginatedProducts); // paginated list
+router.get("/generate-sku", productController.generateSKU); // generate unique SKU
 router.get("/:id", productController.getProductById); // details
+router.get("/:id/short", productController.getProductShortInfo); // short info
 
 // Protected
 router.post("/", authenticate, authorize("products", "create"), upload.single("image"), productController.createProduct);
-router.put("/:id", authenticate, authorize("products", "update"), productController.updateProduct);
+router.put("/:id", authenticate, authorize("products", "update"), upload.single("image"), productController.updateProduct);
 router.delete("/:id", authenticate, authorize("products", "delete"), productController.deleteProduct);
 router.post("/:id/media", authenticate, authorize("products", "update"), upload.single("image"), productController.addProductMedia);
 router.delete("/:id/media/:mediaId", authenticate, authorize("products", "update"), productController.deleteProductMedia);

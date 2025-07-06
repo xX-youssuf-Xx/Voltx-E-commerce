@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import * as authService from "../services/authService";
+import { AuthRequest } from "../middlewares/authMiddleware";
 
 export async function register(req: Request, res: Response) {
   const { name, email, pass } = req.body;
@@ -8,9 +9,9 @@ export async function register(req: Request, res: Response) {
   }
   try {
     const user = await authService.register(name, email, pass);
-    res.status(201).json(user);
+    return res.status(201).json(user);
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message });
   }
 }
 
@@ -21,8 +22,25 @@ export async function login(req: Request, res: Response) {
   }
   try {
     const result = await authService.login(email, pass);
-    res.json(result);
+    return res.json(result);
   } catch (err: any) {
-    res.status(401).json({ error: err.message });
+    return res.status(401).json({ error: err.message });
+  }
+}
+
+export async function verify(req: AuthRequest, res: Response) {
+  try {
+    // The auth middleware already verified the token
+    // Just return the user information
+    return res.json({
+      user: {
+        user_id: req.user?.user_id,
+        name: req.user?.name,
+        email: req.user?.email,
+        role_id: req.user?.role_id
+      }
+    });
+  } catch (err: any) {
+    return res.status(401).json({ error: "Invalid token" });
   }
 } 

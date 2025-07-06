@@ -2,13 +2,19 @@
     "name": "voltx-backend",
     "version": "1.0.0",
     "description": "VoltX E-commerce Backend",
-    "main": "src/server.ts",
+    "main": "dist/server.js",
     "scripts": {
-        "start": "bun run src/server.ts",
+        "start": "bun run dist/server.js",
         "dev": "bun --watch src/server.ts",
-        "build": "bun build src/server.ts --outdir=dist --target=bun",
+        "build": "bun build src/server.ts --outdir=dist --target=bun --minify",
+        "build:full": "node build.js",
+        "build:tsc": "tsc",
+        "build:clean": "rm -rf dist && bun run build",
+        "build:prod": "NODE_ENV=production bun run build:full",
         "test": "bun test",
-        "type-check": "tsc --noEmit"
+        "type-check": "tsc --noEmit",
+        "lint": "tsc --noEmit",
+        "preview": "bun run dist/server.js"
     },
     "dependencies": {
         "@elastic/elasticsearch": "^8.11.0",
