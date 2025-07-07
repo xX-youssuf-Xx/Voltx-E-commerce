@@ -16,7 +16,7 @@ app.use(cors({ origin: "*" }));
 app.use(express.json());
 
 // Serve static files from uploads directory - works in both dev and production
-const uploadsPath = path.join(process.cwd(), "uploads");
+const uploadsPath = path.join(process.cwd(), "dist", "uploads");
 app.use("/uploads", express.static(uploadsPath));
 
 // Database client for health check

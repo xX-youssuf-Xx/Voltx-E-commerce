@@ -130,12 +130,12 @@ export async function createProduct(req: AuthRequest, res: Response) {
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    const product = await productService.createProduct(productData, userId, imagePath);
+    let product = await productService.createProduct(productData, userId, imagePath);
     
     // Rename the uploaded file to use SKU-based naming
     if (req.file && product.sku) {
       try {
-        const uploadDir = path.join(process.cwd(), "uploads");
+        const uploadDir = path.join(process.cwd(), "dist", "uploads");
         const oldPath = path.join(uploadDir, req.file.filename);
         const fileExtension = path.extname(req.file.originalname);
         
@@ -149,15 +149,13 @@ export async function createProduct(req: AuthRequest, res: Response) {
         // Rename the file
         fs.renameSync(oldPath, newPath);
         
-        // Update the product's primary media path if this was the primary image
-        if (imagePath) {
-          await productService.updateProduct(product.product_id, {
-            primary_media_id: product.primary_media_id
-          }, userId);
-        }
+        // Update the product's image_url in the DB to the new path
+        product = await productService.updateProduct(product.product_id, {
+          primary_media_id: product.primary_media_id,
+          image_url: `/uploads/${newFilename}`
+        }, userId);
       } catch (error) {
         console.error('Error renaming file:', error);
-        // Don't fail the request if file renaming fails
       }
     }
     
@@ -247,15 +245,14 @@ export async function addProductMedia(req: AuthRequest, res: Response) {
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    const media = await productService.addProductMedia(Number(req.params.id), req.body, userId, imagePath);
+    let media = await productService.addProductMedia(Number(req.params.id), req.body, userId, imagePath);
     
     // Rename the uploaded file to use SKU-based naming
     if (req.file) {
       try {
-        // Get the product to access its SKU
         const product = await productService.getProductById(Number(req.params.id));
         if (product && product.sku) {
-          const uploadDir = path.join(process.cwd(), "uploads");
+          const uploadDir = path.join(process.cwd(), "dist", "uploads");
           const oldPath = path.join(uploadDir, req.file.filename);
           const fileExtension = path.extname(req.file.originalname);
           
@@ -270,16 +267,12 @@ export async function addProductMedia(req: AuthRequest, res: Response) {
           fs.renameSync(oldPath, newPath);
           
           // Update the media record with the new filename
-          await productService.updateProductMedia(media.media_id, {
+          media = await productService.updateProductMedia(media.media_id, {
             image_url: `/uploads/${newFilename}`
           });
-          
-          // Update the response with the new path
-          media.image_url = `/uploads/${newFilename}`;
         }
       } catch (error) {
         console.error('Error renaming media file:', error);
-        // Don't fail the request if file renaming fails
       }
     }
     
