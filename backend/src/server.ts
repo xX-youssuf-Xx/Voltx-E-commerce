@@ -6,6 +6,8 @@ import productsRoutes from "./routes/products";
 import categoriesRoutes from "./routes/categories";
 import brandsRoutes from "./routes/brands";
 import discountsRouter from './routes/discounts';
+import cartsRouter from './routes/carts';
+import homepageRouter from './routes/homepage';
 import { Client } from "pg";
 
 const app = express();
@@ -13,9 +15,9 @@ const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// Serve static files from uploads directory
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
+// Serve static files from uploads directory - works in both dev and production
+const uploadsPath = path.join(process.cwd(), "uploads");
+app.use("/uploads", express.static(uploadsPath));
 
 // Database client for health check
 const dbClient = new Client({ connectionString: process.env.DATABASE_URL });
@@ -57,6 +59,8 @@ app.use("/api/products", productsRoutes);
 app.use("/api/categories", categoriesRoutes);
 app.use("/api/brands", brandsRoutes);
 app.use("/api/discounts", discountsRouter);
+app.use("/api/carts", cartsRouter);
+app.use("/api/homepage", homepageRouter);
 
 const PORT = process.env.PORT || 3005;
 app.listen(PORT, () => {

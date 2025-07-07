@@ -28,14 +28,28 @@ try {
   process.exit(1);
 }
 
-// Copy uploads directory if it exists
-console.log('📁 Copying uploads directory...');
-if (fs.existsSync('./uploads')) {
-  fs.cpSync('./uploads', './dist/uploads', { recursive: true });
-  console.log('✅ Uploads directory copied!');
+// Ensure uploads directory exists and copy if it has content
+console.log('📁 Setting up uploads directory...');
+const uploadsDir = path.join(process.cwd(), 'uploads');
+const distUploadsDir = path.join(process.cwd(), 'dist', 'uploads');
+
+// Create uploads directory in dist
+if (!fs.existsSync(distUploadsDir)) {
+  fs.mkdirSync(distUploadsDir, { recursive: true });
+  console.log('✅ Created uploads directory in dist');
+}
+
+// Copy existing uploads if they exist
+if (fs.existsSync(uploadsDir)) {
+  const files = fs.readdirSync(uploadsDir);
+  if (files.length > 0) {
+    fs.cpSync(uploadsDir, distUploadsDir, { recursive: true });
+    console.log(`✅ Copied ${files.length} files from uploads directory`);
+  } else {
+    console.log('ℹ️  Uploads directory exists but is empty');
+  }
 } else {
-  console.log('⚠️  Uploads directory not found, creating empty one...');
-  fs.mkdirSync('./dist/uploads', { recursive: true });
+  console.log('ℹ️  Uploads directory not found, created empty one');
 }
 
 // Copy package.json for production dependencies

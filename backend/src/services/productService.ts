@@ -273,6 +273,23 @@ export async function deleteProductMedia(productId: number, mediaId: number, use
   await db.query("DELETE FROM media WHERE media_id = $1 AND product_id = $2", [mediaId, productId]);
 }
 
+export async function updateProductMedia(mediaId: number, data: any) {
+  const fields = Object.keys(data);
+  if (fields.length === 0) {
+    throw new Error("No fields to update");
+  }
+
+  const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(", ");
+  const values = [mediaId, ...fields.map(field => data[field])];
+
+  const result = await db.query(
+    `UPDATE media SET ${setClause} WHERE media_id = $1 RETURNING *`,
+    values
+  );
+
+  return result.rows[0];
+}
+
 interface PaginationParams {
   page: number;
   limit: number;
@@ -395,24 +412,16 @@ export async function getPaginatedProducts(params: PaginationParams) {
   };
 }
 
-// Generate a random 4-character lowercase alphanumeric SKU
+// Generate a random 4-digit numeric SKU (0000-9999)
 export async function generateUniqueSKU(): Promise<string> {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let sku = '';
   let isUnique = false;
-  
   while (!isUnique) {
-    sku = '';
-    for (let i = 0; i < 4; i++) {
-      sku += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    
-    // Check if SKU exists
+    sku = Math.floor(1000 + Math.random() * 9000).toString(); // always 4 digits, no leading zero
     const existingSku = await db.query("SELECT product_id FROM products WHERE sku = $1", [sku]);
     if (existingSku.rows.length === 0) {
       isUnique = true;
     }
   }
-  
   return sku;
 } 

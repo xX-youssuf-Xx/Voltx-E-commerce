@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import * as productService from "../services/productService";
 import { AuthRequest } from "../middlewares/authMiddleware";
+import fs from "fs";
+import path from "path";
 
 export async function listProducts(req: Request, res: Response) {
   try {
@@ -129,6 +131,36 @@ export async function createProduct(req: AuthRequest, res: Response) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     const product = await productService.createProduct(productData, userId, imagePath);
+    
+    // Rename the uploaded file to use SKU-based naming
+    if (req.file && product.sku) {
+      try {
+        const uploadDir = path.join(process.cwd(), "uploads");
+        const oldPath = path.join(uploadDir, req.file.filename);
+        const fileExtension = path.extname(req.file.originalname);
+        
+        // Check if files with this SKU already exist to determine the number
+        const files = fs.readdirSync(uploadDir).filter(f => f.startsWith(product.sku + '-'));
+        const nextNumber = files.length + 1;
+        
+        const newFilename = `${product.sku}-${nextNumber}${fileExtension}`;
+        const newPath = path.join(uploadDir, newFilename);
+        
+        // Rename the file
+        fs.renameSync(oldPath, newPath);
+        
+        // Update the product's primary media path if this was the primary image
+        if (imagePath) {
+          await productService.updateProduct(product.product_id, {
+            primary_media_id: product.primary_media_id
+          }, userId);
+        }
+      } catch (error) {
+        console.error('Error renaming file:', error);
+        // Don't fail the request if file renaming fails
+      }
+    }
+    
     return res.status(201).json(product);
   } catch (err: any) {
     console.error('Create product error:', err);
@@ -216,6 +248,41 @@ export async function addProductMedia(req: AuthRequest, res: Response) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
     const media = await productService.addProductMedia(Number(req.params.id), req.body, userId, imagePath);
+    
+    // Rename the uploaded file to use SKU-based naming
+    if (req.file) {
+      try {
+        // Get the product to access its SKU
+        const product = await productService.getProductById(Number(req.params.id));
+        if (product && product.sku) {
+          const uploadDir = path.join(process.cwd(), "uploads");
+          const oldPath = path.join(uploadDir, req.file.filename);
+          const fileExtension = path.extname(req.file.originalname);
+          
+          // Check if files with this SKU already exist to determine the number
+          const files = fs.readdirSync(uploadDir).filter(f => f.startsWith(product.sku + '-'));
+          const nextNumber = files.length + 1;
+          
+          const newFilename = `${product.sku}-${nextNumber}${fileExtension}`;
+          const newPath = path.join(uploadDir, newFilename);
+          
+          // Rename the file
+          fs.renameSync(oldPath, newPath);
+          
+          // Update the media record with the new filename
+          await productService.updateProductMedia(media.media_id, {
+            image_url: `/uploads/${newFilename}`
+          });
+          
+          // Update the response with the new path
+          media.image_url = `/uploads/${newFilename}`;
+        }
+      } catch (error) {
+        console.error('Error renaming media file:', error);
+        // Don't fail the request if file renaming fails
+      }
+    }
+    
     return res.status(201).json(media);
   } catch (err: any) {
     return res.status(400).json({ error: err.message });
