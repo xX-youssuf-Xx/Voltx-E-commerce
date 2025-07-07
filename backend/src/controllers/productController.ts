@@ -149,14 +149,18 @@ export async function createProduct(req: AuthRequest, res: Response) {
         // Rename the file
         fs.renameSync(oldPath, newPath);
         
-        // Update the product's image_url in the DB to the new path
-        product = await productService.updateProduct(product.product_id, {
-          primary_media_id: product.primary_media_id,
+        // Update the media.image_url in the DB to the new path
+        await productService.updateProductMedia(product.media_id, {
           image_url: `/uploads/${newFilename}`
-        }, userId);
+        });
+        // Re-fetch the product to get the correct primary_media URL
+        product = await productService.getProductById(product.product_id);
       } catch (error) {
         console.error('Error renaming file:', error);
       }
+    } else {
+      // If no file or no rename, still fetch the product for consistency
+      product = await productService.getProductById(product.product_id);
     }
     
     return res.status(201).json(product);

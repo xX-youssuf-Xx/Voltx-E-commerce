@@ -145,19 +145,21 @@ export async function createProduct(data: any, userId: number, imagePath?: strin
   );
   const product = productResult.rows[0];
   
-  // 2. Insert media and get its id
+  // 2. Insert media and get its id (use temp imagePath, will update after rename)
   const mediaResult = await db.query(
-    `INSERT INTO media (product_id, image_url, alt_text, sort_order) VALUES ($1, $2, $3, 0) RETURNING media_id`,
+    `INSERT INTO media (product_id, image_url, alt_text, sort_order) VALUES ($1, $2, $3, 0) RETURNING media_id, image_url`,
     [product.product_id, imagePath, data.alt_text || null]
   );
   const mediaId = mediaResult.rows[0].media_id;
-  
+
   // 3. Update product with primary_media_id
   const updatedProductResult = await db.query(
     `UPDATE products SET primary_media_id = $1 WHERE product_id = $2 RETURNING *`,
     [mediaId, product.product_id]
   );
-  return { ...updatedProductResult.rows[0], primary_media_id: mediaId };
+
+  // 4. Return product and mediaId for controller to update image_url after rename
+  return { ...updatedProductResult.rows[0], primary_media_id: mediaId, media_id: mediaId };
 }
 
 export async function updateProduct(id: number, data: any, userId: number) {
