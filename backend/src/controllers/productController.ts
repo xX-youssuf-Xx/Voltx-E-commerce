@@ -3,6 +3,7 @@ import * as productService from "../services/productService";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import fs from "fs";
 import path from "path";
+import { getProductBySlug as getProductBySlugService } from "../services/productService";
 
 export async function listProducts(req: Request, res: Response) {
   try {
@@ -67,6 +68,18 @@ export async function getProductById(req: Request, res: Response) {
 export async function getProductShortInfo(req: Request, res: Response) {
   try {
     const product = await productService.getProductShortInfo(Number(req.params.id));
+    if (!product) return res.status(404).json({ error: "Product not found" });
+    return res.json(product);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getProductBySlug(req: Request, res: Response) {
+  try {
+    const slug = req.params.slug;
+    if (!slug) return res.status(400).json({ error: "Missing slug" });
+    const product = await getProductBySlugService(slug);
     if (!product) return res.status(404).json({ error: "Product not found" });
     return res.json(product);
   } catch (err: any) {
@@ -305,5 +318,50 @@ export async function generateSKU(req: Request, res: Response) {
     return res.json({ sku });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
+  }
+} 
+
+// DOCS CONTROLLERS (stubs)
+export async function listProductDocs(req: AuthRequest, res: Response) {
+  try {
+    const docs = await productService.listProductDocs(Number(req.params.id));
+    return res.json(docs);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function addProductDoc(req: AuthRequest, res: Response) {
+  try {
+    const filePath = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const userId = req.user?.user_id;
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    const doc = await productService.addProductDoc(Number(req.params.id), req.body, userId, filePath, req.file);
+    return res.status(201).json(doc);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+export async function deleteProductDoc(req: AuthRequest, res: Response) {
+  try {
+    const userId = req.user?.user_id;
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    await productService.deleteProductDoc(Number(req.params.id), Number(req.params.docId), userId);
+    return res.status(204).send();
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
+  }
+}
+
+export async function updateProductDoc(req: AuthRequest, res: Response) {
+  try {
+    const filePath = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const userId = req.user?.user_id;
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+    const doc = await productService.updateProductDoc(Number(req.params.id), Number(req.params.docId), req.body, userId, filePath, req.file);
+    return res.json(doc);
+  } catch (err: any) {
+    return res.status(400).json({ error: err.message });
   }
 } 

@@ -427,3 +427,83 @@ export async function generateUniqueSKU(): Promise<string> {
   }
   return sku;
 } 
+
+// DOCS SERVICE FUNCTIONS
+export async function listProductDocs(productId: number) {
+  const result = await db.query(
+    `SELECT * FROM documents WHERE product_id = $1 ORDER BY document_id DESC`,
+    [productId]
+  );
+  return result.rows;
+}
+
+export async function addProductDoc(productId: number, data: any, userId: number, filePath?: string, file?: Express.Multer.File) {
+  if (!filePath || !file) throw new Error("file is required");
+  const result = await db.query(
+    `INSERT INTO documents (product_id, file_name, file_url, file_size_kb, type) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [
+      productId,
+      file.originalname,
+      filePath,
+      file.size ? Math.round(file.size / 1024) : 0,
+      data.type || 'other'
+    ]
+  );
+  return result.rows[0];
+}
+
+export async function deleteProductDoc(productId: number, docId: number, userId: number) {
+  await db.query(`DELETE FROM documents WHERE document_id = $1 AND product_id = $2`, [docId, productId]);
+}
+
+export async function updateProductDoc(productId: number, docId: number, data: any, userId: number, filePath?: string, file?: Express.Multer.File) {
+  // Build dynamic update query
+  const fields = [];
+  const values: (string | number)[] = [docId, productId];
+  let idx = 3;
+  if (data.name) {
+    fields.push(`file_name = $${idx++}`);
+    values.push(data.name);
+  }
+  if (data.type) {
+    fields.push(`type = $${idx++}`);
+    values.push(data.type);
+  }
+  if (data.description) {
+    fields.push(`description = $${idx++}`);
+    values.push(data.description);
+  }
+  if (filePath && file) {
+    fields.push(`file_url = $${idx++}`);
+    values.push(filePath);
+    fields.push(`file_size_kb = $${idx++}`);
+    values.push(file && typeof file.size === 'number' ? Math.round(file.size / 1024) : 0);
+  }
+  if (fields.length === 0) throw new Error('No fields to update');
+  const setClause = fields.join(', ');
+  const result = await db.query(
+    `UPDATE documents SET ${setClause} WHERE document_id = $1 AND product_id = $2 RETURNING *`,
+    values
+  );
+  return result.rows[0];
+} 
+
+export async function getProductBySlug(slug: string) {
+  const result = await db.query(`
+    SELECT 
+      p.*,
+      b.name as brand_name,
+      c.name as category_name,
+      pc.name as parent_category_name,
+      pc.category_id as parent_category_id
+    FROM products p
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN categories pc ON c.parent_id = pc.category_id
+    WHERE p.slug = $1
+  `, [slug]);
+  if (result.rows.length === 0) return null;
+  const product = result.rows[0];
+  const media = await db.query("SELECT * FROM media WHERE product_id = $1 ORDER BY sort_order", [product.product_id]);
+  return { ...product, media: media.rows };
+} 

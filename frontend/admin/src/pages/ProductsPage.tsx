@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-hot-toast';
+import { TipTapEditor } from '../components/TipTapEditor'; // Corrected import path
+import { MediaDocsModal } from '../components/MediaDocsModal';
 
 interface Product {
   product_id: number;
@@ -102,6 +104,7 @@ const ProductsPage: React.FC = () => {
   const [showYoutubeModal, setShowYoutubeModal] = useState(false);
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [newKeyword, setNewKeyword] = useState('');
+  const [mediaDocsProductId, setMediaDocsProductId] = useState<number | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<ProductFormData>({
@@ -321,11 +324,6 @@ const ProductsPage: React.FC = () => {
     if (e.target.files && e.target.files[0]) {
       setFormData(prev => ({ ...prev, image: e.target.files![0] }));
     }
-  };
-
-  // Handle long description content change
-  const handleLongDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setLongDescriptionContent(e.target.value);
   };
 
   // Add YouTube video to long description
@@ -800,6 +798,12 @@ const ProductsPage: React.FC = () => {
                               <span>Category: {product.category_name || 'N/A'}</span>
                               <span>Stock: {product.stock_quantity}</span>
                               <span>Box: {product.box_number || 'N/A'}</span>
+                              {product.is_custom_status && (
+                                <>
+                                  <span>Status: {product.custom_status}</span>
+                                  <span style={{ color: product.custom_status_color }}>•</span>
+                                </>
+                              )}
                             </div>
                           </div>
 
@@ -840,6 +844,7 @@ const ProductsPage: React.FC = () => {
                           Delete
                         </button>
                         <button
+                          onClick={() => setMediaDocsProductId(product.product_id)}
                           className="bg-purple-100 text-purple-700 px-3 py-1 rounded text-sm hover:bg-purple-200 transition-colors"
                         >
                           Media & Docs
@@ -959,23 +964,6 @@ const ProductsPage: React.FC = () => {
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
                     required
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                  <select
-                    name="brand_id"
-                    value={formData.brand_id}
-                    onChange={handleInputChange}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                  >
-                    <option value={0}>Select Brand</option>
-                    {brands.map(brand => (
-                      <option key={brand.brand_id} value={brand.brand_id}>
-                        {brand.name}
-                      </option>
-                    ))}
-                  </select>
                 </div>
 
                 <div>
@@ -1254,12 +1242,9 @@ const ProductsPage: React.FC = () => {
                         <span className="text-xs text-gray-500">Add rich content blocks</span>
                       </div>
                       {/* Content Area */}
-                      <textarea
-                        value={longDescriptionContent}
-                        onChange={handleLongDescriptionChange}
-                        rows={8}
-                        placeholder="Enter your long description content here. Use the toolbar above to add rich media like YouTube videos."
-                        className="w-full p-3 border-0 focus:ring-0 resize-none"
+                      <TipTapEditor
+                        content={longDescriptionContent}
+                        onUpdate={(newContent: any) => setLongDescriptionContent(JSON.stringify(newContent, null, 2))}
                       />
                     </div>
                   </div>
@@ -1334,6 +1319,12 @@ const ProductsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <MediaDocsModal
+        open={mediaDocsProductId !== null}
+        onClose={() => setMediaDocsProductId(null)}
+        productId={mediaDocsProductId ?? 0}
+      />
     </div>
   );
 };
