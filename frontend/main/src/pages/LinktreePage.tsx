@@ -53,7 +53,7 @@ const LinktreePage: React.FC = () => {
         <div className="w-full max-w-xl rounded-xl overflow-hidden shadow-lg mb-10">
           <iframe
             title="Voltx Store Location"
-            src="https://maps.app.goo.gl/abUPQakMAqVxsUrMA"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4655.873751385271!2d31.3651372!3d31.0412413!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14f79d00389f50ff%3A0xdb26a929f5307f9f!2sVoltx%20store!5e1!3m2!1sen!2seg!4v1752217849073!5m2!1sen!2seg"
             width="100%"
             height="320"
             style={{ border: 0 }}
