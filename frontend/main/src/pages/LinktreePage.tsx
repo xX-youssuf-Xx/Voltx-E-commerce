@@ -34,7 +34,7 @@ const LinktreePage: React.FC = () => {
         <div className="flex flex-col items-center text-center mb-10">
           <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full h-32 w-32 sm:h-36 sm:w-36 mb-5 border-4 border-[#e8b4b7] shadow-lg" style={{ backgroundImage: 'url(https://lh3.googleusercontent.com/aida-public/AB6AXuAIU9cToJWBwAt2VnSAQ1tbt1pGltC7p_vWqMJKwCNZcUquD7s_Iz7cfCvOXgQtilYOzLm1e4qAS19DWGtcP6u_B0gqFSojwa6zs2rauhgJ2LU2fpS-wS6b8oaYgENHwTQCPPXIK9Hfkj3eyz3aeyZIYv6vC47AGMAYPvUNArTPS6HeiUvO0CKl_pRp1lXMP6LIAwAwyK7tqxEVtrTqlzm8qqUFrku1zDQwD-IgL11PGhYypOX3d--VFBC3O2jX4VtZt0FvMk9Y93tE)' }} />
           <h1 className="text-[#191011] text-3xl sm:text-4xl font-bold leading-tight tracking-tight mb-2">Voltx Electronics</h1>
-          <p className="text-[#5c4b4c] text-base sm:text-lg font-normal leading-normal max-w-md">Your one-stop shop for Arduino, Raspberry Pi, and ESP32 products.</p>
+          <p className="text-[#5c4b4c] text-base sm:text-lg font-normal leading-normal max-w-md">Your one-stop shop for Arduino, Raspberry Pi, ESP32 products , and More.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 w-full max-w-xl">
           {socialLinks.map((link) => (
