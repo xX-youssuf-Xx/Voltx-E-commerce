@@ -1,4 +1,5 @@
 import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   const socialLinks = [
@@ -31,11 +32,12 @@ const Footer = () => {
             <h3 className="text-lg font-semibold text-white mb-2">Quick Links</h3>
             <div className="text-sm ml-4">
               <div className="flex flex-wrap gap-x-4 gap-y-1">
-                <a className="hover:text-blue-400 transition-colors" href="#">Home</a>
-                <a className="hover:text-blue-400 transition-colors" href="#">Shop</a>
-                <a className="hover:text-blue-400 transition-colors" href="#">About Us</a>
-                <a className="hover:text-blue-400 transition-colors" href="#">Contact Us</a>
-                <a className="hover:text-blue-400 transition-colors" href="#">Privacy Policy</a>
+                <Link className="hover:text-blue-400 transition-colors" to="/">Home</Link>
+                <Link className="hover:text-blue-400 transition-colors" to="/shop">Shop</Link>
+                <Link className="hover:text-blue-400 transition-colors" to="/about">About Us</Link>
+                <Link className="hover:text-blue-400 transition-colors" to="/contact">Contact Us</Link>
+                <Link className="hover:text-blue-400 transition-colors" to="/privacy">Privacy Policy</Link>
+                <Link className="hover:text-blue-400 transition-colors" to="/services">Services</Link>
               </div>
             </div>
           </div>
