@@ -45,9 +45,17 @@ jobs:
             echo "SUCCESS: $1 at $(date)" | tee -a $LOG_FILE
           }
           
-          # Build Backend
-          echo "Building backend..." | tee -a $LOG_FILE
+          # Install dependencies and Build Backend
+          echo "Installing backend dependencies..." | tee -a $LOG_FILE
           cd /var/www/Voltx-E-commerce/backend
+          if bun install 2>&1 | tee -a $LOG_FILE; then
+            log_success "Backend dependencies installed"
+          else
+            log_error "Backend dependencies installation failed"
+            exit 1
+          fi
+          
+          echo "Building backend..." | tee -a $LOG_FILE
           if bun run build:full 2>&1 | tee -a $LOG_FILE; then
             log_success "Backend build completed"
           else
@@ -55,9 +63,17 @@ jobs:
             exit 1
           fi
           
-          # Build Frontend Admin
-          echo "Building frontend admin..." | tee -a $LOG_FILE
+          # Install dependencies and Build Frontend Admin
+          echo "Installing frontend admin dependencies..." | tee -a $LOG_FILE
           cd /var/www/Voltx-E-commerce/frontend/admin
+          if bun install 2>&1 | tee -a $LOG_FILE; then
+            log_success "Frontend admin dependencies installed"
+          else
+            log_error "Frontend admin dependencies installation failed"
+            exit 1
+          fi
+          
+          echo "Building frontend admin..." | tee -a $LOG_FILE
           if bun run build:full 2>&1 | tee -a $LOG_FILE; then
             log_success "Frontend admin build completed"
           else
@@ -65,9 +81,17 @@ jobs:
             exit 1
           fi
           
-          # Build Frontend Main
-          echo "Building frontend main..." | tee -a $LOG_FILE
+          # Install dependencies and Build Frontend Main
+          echo "Installing frontend main dependencies..." | tee -a $LOG_FILE
           cd /var/www/Voltx-E-commerce/frontend/main
+          if bun install 2>&1 | tee -a $LOG_FILE; then
+            log_success "Frontend main dependencies installed"
+          else
+            log_error "Frontend main dependencies installation failed"
+            exit 1
+          fi
+          
+          echo "Building frontend main..." | tee -a $LOG_FILE
           if bun run build:full 2>&1 | tee -a $LOG_FILE; then
             log_success "Frontend main build completed"
           else
@@ -75,13 +99,21 @@ jobs:
             exit 1
           fi
           
-          # Build Frontend Cashier
-          echo "Building frontend cashier..." | tee -a $LOG_FILE
+          # Install dependencies and Build Frontend Cashier
+          echo "Installing frontend cashier dependencies..." | tee -a $LOG_FILE
           cd /var/www/Voltx-E-commerce/frontend/cashier
+          if bun install 2>&1 | tee -a $LOG_FILE; then
+            log_success "Frontend cashier dependencies installed"
+          else
+            log_error "Frontend cashier dependencies installation failed"
+            exit 1
+          fi
+          
+          echo "Building frontend cashier..." | tee -a $LOG_FILE
           if bun run build:full 2>&1 | tee -a $LOG_FILE; then
             log_success "Frontend cashier build completed"
           else
-            log_error "Frontend cashier build failed"
+            log_error "Frontend cashier build failed - Please add build:full script to package.json"
             exit 1
           fi
           
@@ -113,7 +145,7 @@ jobs:
           echo "Testing service availability..." | tee -a $LOG_FILE
           
           # Test if backend is responding (adjust port as needed)
-          if curl -f http://localhost:3000/api/health 2>/dev/null; then
+          if curl -f http://localhost:3000/health 2>/dev/null; then
             log_success "Backend service is responding"
           else
             log_error "Backend service is not responding"

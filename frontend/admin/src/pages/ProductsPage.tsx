@@ -598,12 +598,6 @@ const ProductsPage: React.FC = () => {
     window.open(`${MEDIA_BASE}/product/${productId}`, '_blank');
   };
 
-  // Test token storage
-  const testToken = () => {
-    const token = localStorage.getItem('authToken');
-    console.log('Stored token:', token);
-    toast.success(`Token: ${token ? token.substring(0, 20) + '...' : 'null'}`);
-  };
 
   return (
     <div className="p-6">
