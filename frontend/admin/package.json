@@ -18,7 +18,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hot-toast": "^2.5.2",
-    "react-router-dom": "^6.8.0"
+    "react-router-dom": "^6.8.0",
+    "tiptap": "^1.32.2"
   },
   "devDependencies": {
     "@types/react": "^19.1.8",
