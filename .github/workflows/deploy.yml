@@ -1,93 +1,135 @@
-name: Deploy VoltX E-commerce
+name: Production Deployment
 
 on:
-  repository_dispatch:
-    types: [deploy-production]
+  push:
+    branches: [ production ]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-        - production
-        - staging
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: voltx-ecommerce
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Log in to Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Extract metadata (tags, labels) for Backend
-      id: meta-backend
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ github.repository }}/backend
-
-    - name: Extract metadata (tags, labels) for Frontend
-      id: meta-frontend
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ github.repository }}/frontend
-
-    - name: Build and push Backend Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./backend
-        file: ./backend/Dockerfile.prod
-        push: true
-        tags: ${{ steps.meta-backend.outputs.tags }}
-        labels: ${{ steps.meta-backend.outputs.labels }}
-
-    - name: Build and push Frontend Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./frontend
-        file: ./frontend/Dockerfile.prod
-        push: true
-        tags: ${{ steps.meta-frontend.outputs.tags }}
-        labels: ${{ steps.meta-frontend.outputs.labels }}
-
   deploy:
-    needs: build
     runs-on: ubuntu-latest
-    if: github.event.action == 'deploy-production' || github.event.inputs.environment == 'production'
-
+    
     steps:
-    - name: Checkout repository
+    - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Deploy to production server
-      uses: appleboy/ssh-action@v1.0.0
+      
+    - name: Deploy to Production Server
+      uses: appleboy/ssh-action@v1.0.3
       with:
-        host: ${{ secrets.PRODUCTION_HOST }}
-        username: ${{ secrets.PRODUCTION_USER }}
-        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        password: ${{ secrets.PASSWORD }}
+        port: ${{ secrets.PORT }}
         script: |
-          cd /path/to/your/app
-          git pull origin main
-          docker-compose -f docker-compose.prod.yml down
-          docker-compose -f docker-compose.prod.yml pull
-          docker-compose -f docker-compose.prod.yml up -d
-          docker system prune -f
+          # Create log file with timestamp
+          LOG_FILE="/var/www/deployment-logs/deploy-$(date +%Y%m%d-%H%M%S).log"
+          mkdir -p /var/www/deployment-logs
+          
+          echo "=== Deployment Started at $(date) ===" | tee -a $LOG_FILE
+          
+          # Navigate to project directory
+          cd /var/www/Voltx-E-commerce || { echo "Failed to navigate to project directory" | tee -a $LOG_FILE; exit 1; }
+          
+          # Pull latest changes from production branch
+          echo "Pulling latest changes..." | tee -a $LOG_FILE
+          git fetch origin production 2>&1 | tee -a $LOG_FILE
+          git reset --hard origin/production 2>&1 | tee -a $LOG_FILE
+          
+          # Function to log errors
+          log_error() {
+            echo "ERROR: $1 at $(date)" | tee -a $LOG_FILE
+          }
+          
+          # Function to log success
+          log_success() {
+            echo "SUCCESS: $1 at $(date)" | tee -a $LOG_FILE
+          }
+          
+          # Build Backend
+          echo "Building backend..." | tee -a $LOG_FILE
+          cd /var/www/Voltx-E-commerce/backend
+          if bun run build:full 2>&1 | tee -a $LOG_FILE; then
+            log_success "Backend build completed"
+          else
+            log_error "Backend build failed"
+            exit 1
+          fi
+          
+          # Build Frontend Admin
+          echo "Building frontend admin..." | tee -a $LOG_FILE
+          cd /var/www/Voltx-E-commerce/frontend/admin
+          if bun run build:full 2>&1 | tee -a $LOG_FILE; then
+            log_success "Frontend admin build completed"
+          else
+            log_error "Frontend admin build failed"
+            exit 1
+          fi
+          
+          # Build Frontend Main
+          echo "Building frontend main..." | tee -a $LOG_FILE
+          cd /var/www/Voltx-E-commerce/frontend/main
+          if bun run build:full 2>&1 | tee -a $LOG_FILE; then
+            log_success "Frontend main build completed"
+          else
+            log_error "Frontend main build failed"
+            exit 1
+          fi
+          
+          # Build Frontend Cashier
+          echo "Building frontend cashier..." | tee -a $LOG_FILE
+          cd /var/www/Voltx-E-commerce/frontend/cashier
+          if bun run build:full 2>&1 | tee -a $LOG_FILE; then
+            log_success "Frontend cashier build completed"
+          else
+            log_error "Frontend cashier build failed"
+            exit 1
+          fi
+          
+          # Restart PM2 processes
+          echo "Restarting PM2 processes..." | tee -a $LOG_FILE
+          if pm2 restart all 2>&1 | tee -a $LOG_FILE; then
+            log_success "PM2 processes restarted"
+          else
+            log_error "PM2 restart failed"
+          fi
+          
+          # Check PM2 status
+          echo "PM2 Status:" | tee -a $LOG_FILE
+          pm2 status 2>&1 | tee -a $LOG_FILE
+          
+          # Restart Nginx
+          echo "Restarting Nginx..." | tee -a $LOG_FILE
+          if sudo systemctl restart nginx 2>&1 | tee -a $LOG_FILE; then
+            log_success "Nginx restarted"
+          else
+            log_error "Nginx restart failed"
+          fi
+          
+          # Check Nginx status
+          echo "Nginx Status:" | tee -a $LOG_FILE
+          sudo systemctl status nginx --no-pager 2>&1 | tee -a $LOG_FILE
+          
+          # Test if services are running
+          echo "Testing service availability..." | tee -a $LOG_FILE
+          
+          # Test if backend is responding (adjust port as needed)
+          if curl -f http://localhost:3000/api/health 2>/dev/null; then
+            log_success "Backend service is responding"
+          else
+            log_error "Backend service is not responding"
+          fi
+          
+          # Test if nginx is serving content
+          if curl -f http://localhost 2>/dev/null; then
+            log_success "Nginx is serving content"
+          else
+            log_error "Nginx is not serving content"
+          fi
+          
+          echo "=== Deployment Completed at $(date) ===" | tee -a $LOG_FILE
+          
+          # Keep only last 10 deployment logs
+          cd /var/www/deployment-logs
+          ls -t deploy-*.log | tail -n +11 | xargs rm -f 2>/dev/null || true
+          
+          echo "Deployment log saved to: $LOG_FILE"
