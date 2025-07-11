@@ -598,6 +598,12 @@ const ProductsPage: React.FC = () => {
     window.open(`${MEDIA_BASE}/product/${productId}`, '_blank');
   };
 
+  // Test token storage
+  const testToken = () => {
+    const token = localStorage.getItem('authToken');
+    console.log('Stored token:', token);
+    toast.success(`Token: ${token ? token.substring(0, 20) + '...' : 'null'}`);
+  };
 
   return (
     <div className="p-6">
@@ -605,6 +611,12 @@ const ProductsPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Products</h1>
         <div className="flex space-x-2">
+          <button
+            onClick={testToken}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Test Token
+          </button>
           <button
             onClick={openCreateModal}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
