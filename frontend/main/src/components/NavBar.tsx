@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import logo from '/voltx.jpg';
 
 const NavBar = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // Toggle this to test logged in/out states
+  const { user, logout } = useAuth();
   const sidebarRef = useRef<HTMLDivElement | null>(null);
   const profileRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,8 +41,10 @@ const NavBar = () => {
     setSidebarOpen(false);
   };
 
-  const toggleLogin = () => {
-    setIsLoggedIn(!isLoggedIn);
+  const handleLogout = () => {
+    logout();
+    setSidebarOpen(false);
+    setProfileOpen(false);
   };
 
   return (
@@ -56,11 +59,11 @@ const NavBar = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6 lg:gap-8 ml-12">
           <Link className="text-gray-900 hover:text-blue-600 text-sm font-medium leading-normal transition-colors" to="/">Home</Link>
-        <Link className="text-gray-900 hover:text-blue-600 text-sm font-medium leading-normal transition-colors" to="/shop">Shop</Link>
+          <Link className="text-gray-900 hover:text-blue-600 text-sm font-medium leading-normal transition-colors" to="/shop">Shop</Link>
           <Link className="text-gray-900 hover:text-blue-600 text-sm font-medium leading-normal transition-colors" to="/about">About</Link>
           <Link className="text-gray-900 hover:text-blue-600 text-sm font-medium leading-normal transition-colors" to="/contact">Contact</Link>
           <Link className="text-gray-900 hover:text-blue-600 text-sm font-medium leading-normal transition-colors" to="/services">Services</Link>
-      </nav>
+        </nav>
 
         {/* Desktop Search - Centered */}
         <div className="hidden md:flex flex-1 justify-center mx-8">
@@ -69,7 +72,7 @@ const NavBar = () => {
               <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px" xmlns="http://www.w3.org/2000/svg">
                 <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
               </svg>
-            </div>
+      </div>
             <input className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors" placeholder="Search products..." />
           </label>
     </div>
@@ -92,7 +95,7 @@ const NavBar = () => {
           <Link to="/carts" aria-label="Shopping Cart" className="flex items-center justify-center rounded-lg h-10 w-10 bg-transparent text-gray-900 hover:bg-blue-50 hover:text-blue-600 transition-colors relative">
         <svg fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
           <path d="M222.14,58.87A8,8,0,0,0,216,56H54.68L49.79,29.14A16,16,0,0,0,34.05,16H16a8,8,0,0,0,0,16h18L59.56,172.29a24,24,0,0,0,5.33,11.27,28,28,0,1,0,44.4,8.44h45.42A27.75,27.75,0,0,0,152,204a28,28,0,1,0,28-28H83.17a8,8,0,0,1-7.87-6.57L72.13,152h116a24,24,0,0,0,23.61-19.71l12.16-66.86A8,8,0,0,0,222.14,58.87ZM96,204a12,12,0,1,1-12-12A12,12,0,0,1,96,204Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,192,204Zm4-74.57A8,8,0,0,1,188.1,136H69.22L57.59,72H206.41Z"></path>
-        </svg>
+            </svg>
             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">3</span>
           </Link>
 
@@ -105,7 +108,7 @@ const NavBar = () => {
           </Link>
 
           {/* Profile Dropdown or Auth Buttons */}
-          {isLoggedIn ? (
+          {user ? (
             <div className="relative" ref={profileRef}>
               <button 
                 onClick={() => setProfileOpen(!isProfileOpen)}
@@ -116,28 +119,34 @@ const NavBar = () => {
                 </svg>
                 <svg className="ml-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
+        </svg>
+      </button>
 
               {/* Profile Dropdown Menu */}
               <div className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 transition-all duration-200 ${
                 isProfileOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'
               }`}>
-                <Link to="/my-orders" onClick={handleLinkClick} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
+                <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                  <p className="font-semibold">{user.name}</p>
+                  <p className="text-gray-500 truncate" title={user.email}>
+                    {user.email.length > 20 ? `${user.email.substring(0, 20)}...` : user.email}
+                  </p>
+                </div>
+                <Link to="/my-orders" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                   My Orders
                 </Link>
                 <button 
-                  onClick={toggleLogin}
+                  onClick={handleLogout}
                   className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
                   Logout
-                </button>
-              </div>
+      </button>
+    </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Link to="/login" onClick={handleLinkClick} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">Login</Link>
-              <Link to="/register" onClick={handleLinkClick} className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium">Sign Up</Link>
+              <Link to="/login" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">Login</Link>
+              <Link to="/register" className="px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium">Sign Up</Link>
             </div>
           )}
         </div>
@@ -197,7 +206,7 @@ const NavBar = () => {
               <hr className="my-4 border-gray-200" />
 
               {/* My Orders - Only show when logged in */}
-              {isLoggedIn && (
+              {user && (
                 <Link to="/my-orders" onClick={handleLinkClick} className="flex items-center px-4 py-3 text-gray-900 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors font-medium">
                   <svg className="mr-3 h-5 w-5" fill="currentColor" viewBox="0 0 256 256">
                     <path d="M216,48H40A16,16,0,0,0,24,64V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V64A16,16,0,0,0,216,48Zm0,16V88H40V64Zm0,128H40V104H216v88ZM168,144a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,144Zm0,24a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"></path>
@@ -227,13 +236,21 @@ const NavBar = () => {
 
             {/* Auth Buttons - Moved after navigation links */}
             <div className="px-6 py-4 border-t border-gray-200 space-y-3">
-              {isLoggedIn ? (
-                <button 
-                  onClick={() => { toggleLogin(); handleLinkClick(); }}
-                  className="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                >
-                  Logout
-                </button>
+              {user ? (
+                <div className="space-y-3">
+                  <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
+                    <p className="font-semibold">{user.name}</p>
+                    <p className="text-gray-500 truncate" title={user.email}>
+                      {user.email.length > 20 ? `${user.email.substring(0, 20)}...` : user.email}
+                    </p>
+                  </div>
+                  <button 
+                    onClick={handleLogout}
+                    className="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                  >
+                    Logout
+                  </button>
+                </div>
               ) : (
                 <>
                   <Link to="/login" onClick={handleLinkClick} className="block w-full text-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">

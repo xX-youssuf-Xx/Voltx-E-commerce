@@ -32,9 +32,10 @@ export async function login(email: string, pass: string) {
     throw new Error("Invalid email or password");
   }
   // Generate JWT
+  const jwtSecret = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-this-in-production";
   const token = jwt.sign(
     { user_id: user.user_id, role_id: user.role_id, email: user.email },
-    process.env.JWT_SECRET || "changeme",
+    jwtSecret,
     { expiresIn: "7d" }
   );
   return { token, user: { user_id: user.user_id, name: user.name, email: user.email, role_id: user.role_id } };
