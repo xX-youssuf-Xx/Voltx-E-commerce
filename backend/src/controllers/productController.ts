@@ -365,3 +365,98 @@ export async function updateProductDoc(req: AuthRequest, res: Response) {
     return res.status(400).json({ error: err.message });
   }
 } 
+
+export async function listProductsAdmin(req: Request, res: Response) {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = "",
+      searchBy = "name",
+      brand,
+      categoryid,
+      status,
+      sku,
+      price_from,
+      price_to,
+      orderBy = "created_at",
+      orderDirection = "DESC"
+    } = req.query;
+
+    const params: any = {
+      page: Number(page),
+      limit: Number(limit),
+      search: String(search),
+      searchBy: String(searchBy),
+      orderBy: String(orderBy),
+      orderDirection: String(orderDirection)
+    };
+
+    // Only add optional properties if they have values
+    if (brand !== undefined) {
+      params.brand = Number(brand);
+    }
+    if (categoryid !== undefined) {
+      params.categoryid = Number(categoryid);
+    }
+    if (status !== undefined) {
+      params.status = String(status);
+    }
+    if (sku !== undefined) {
+      params.sku = String(sku);
+    }
+    if (price_from !== undefined) {
+      params.price_from = Number(price_from);
+    }
+    if (price_to !== undefined) {
+      params.price_to = Number(price_to);
+    }
+
+    const result = await productService.listProductsAdmin(params);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function getShopProducts(req: Request, res: Response) {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      category_ids,
+      brand_id,
+      price_min,
+      price_max,
+      sort_by = 'created_at',
+      sort_order = 'DESC'
+    } = req.query;
+
+    const params: any = {
+      page: Number(page),
+      limit: Number(limit),
+      sort_by: String(sort_by),
+      sort_order: String(sort_order)
+    };
+
+    // Only add optional parameters if they have values
+    if (search) params.search = String(search);
+    if (category_ids) {
+      // Handle both single category_id and multiple category_ids
+      if (Array.isArray(category_ids)) {
+        params.category_ids = category_ids.map(id => Number(id));
+      } else {
+        params.category_ids = [Number(category_ids)];
+      }
+    }
+    if (brand_id) params.brand_id = Number(brand_id);
+    if (price_min !== undefined) params.price_min = Number(price_min);
+    if (price_max !== undefined) params.price_max = Number(price_max);
+
+    const result = await productService.getShopProducts(params);
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}

@@ -7,6 +7,7 @@ const router = Router();
 
 // Public routes
 router.get("/", categoryController.listCategories);
+router.get("/with-subcategories", categoryController.getCategoriesWithSubcategories);
 router.get("/:id", categoryController.getCategoryById);
 
 // Protected routes

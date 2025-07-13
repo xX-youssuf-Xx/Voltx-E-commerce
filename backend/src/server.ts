@@ -7,7 +7,9 @@ import categoriesRoutes from "./routes/categories";
 import brandsRoutes from "./routes/brands";
 import discountsRouter from './routes/discounts';
 import cartsRouter from './routes/carts';
+import wishlistRouter from './routes/wishlist';
 import homepageRouter from './routes/homepage';
+import adminRoutes from './routes/admin';
 import { Client } from "pg";
 
 const app = express();
@@ -60,7 +62,9 @@ app.use("/api/categories", categoriesRoutes);
 app.use("/api/brands", brandsRoutes);
 app.use("/api/discounts", discountsRouter);
 app.use("/api/carts", cartsRouter);
+app.use("/api/wishlist", wishlistRouter);
 app.use("/api/homepage", homepageRouter);
+app.use("/api/admin", adminRoutes);
 
 const PORT = process.env.PORT || 3005;
 app.listen(PORT, () => {

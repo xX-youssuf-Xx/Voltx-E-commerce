@@ -46,4 +46,13 @@ export async function deleteCategory(req: AuthRequest, res: Response) {
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
-} 
+}
+
+export async function getCategoriesWithSubcategories(req: Request, res: Response) {
+  try {
+    const categories = await categoryService.getCategoriesWithSubcategories();
+    res.json(categories);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+}

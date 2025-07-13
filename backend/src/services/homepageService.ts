@@ -11,9 +11,13 @@ export async function listSection(section: string) {
   try {
     console.log(`[listSection] section: ${section}, table: ${table}`);
     const result = await db.query(
-      `SELECT t.id, t.product_id, t.sort_order, p.name, p.sell_price, m.image_url as primary_media
+      `SELECT t.id, t.product_id, t.sort_order, p.name, p.sku, p.sell_price, p.status, p.stock_quantity, 
+              b.name as brand_name, c.name as category_name,
+              m.image_url as primary_media
        FROM ${table} t
        JOIN products p ON t.product_id = p.product_id
+       LEFT JOIN brands b ON p.brand_id = b.brand_id
+       LEFT JOIN categories c ON p.category_id = c.category_id
        LEFT JOIN media m ON p.primary_media_id = m.media_id
        ORDER BY t.sort_order ASC, t.id ASC`
     );
@@ -62,6 +66,53 @@ export async function reorderSection(section: string, order: number[]) {
     }
   } catch (err) {
     console.error(`[reorderSection] Error for section ${section}, order:`, order, err);
+    throw err;
+  }
+}
+
+// New function to get all homepage sections with complete product details
+export async function getHomepageData() {
+  try {
+    console.log('[getHomepageData] Fetching all homepage sections');
+    
+    const sections = ['best_sellers', 'new_arrivals', 'featured_products'];
+    const homepageData: any = {};
+    
+    for (const section of sections) {
+      const table = tableMap[section];
+      const result = await db.query(
+        `SELECT 
+          t.id, 
+          t.product_id, 
+          t.sort_order,
+          p.name,
+          p.slug,
+          p.sku,
+          p.short_description,
+          p.sell_price,
+          p.offer_price,
+          p.is_offer,
+          p.status,
+          p.is_custom_status,
+          p.custom_status,
+          p.custom_status_color,
+          b.name as brand_name,
+          c.name as category_name,
+          m.image_url as primary_media
+        FROM ${table} t
+        JOIN products p ON t.product_id = p.product_id
+        LEFT JOIN brands b ON p.brand_id = b.brand_id
+        LEFT JOIN categories c ON p.category_id = c.category_id
+        LEFT JOIN media m ON p.primary_media_id = m.media_id
+        ORDER BY t.sort_order ASC, t.id ASC`
+      );
+      
+      homepageData[section] = result.rows;
+    }
+    
+    return homepageData;
+  } catch (err) {
+    console.error('[getHomepageData] Error:', err);
     throw err;
   }
 } 

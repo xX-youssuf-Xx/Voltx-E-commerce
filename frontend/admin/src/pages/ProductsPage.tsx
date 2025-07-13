@@ -124,7 +124,7 @@ const ProductsPage: React.FC = () => {
     custom_status: '',
     custom_status_color: '#FF0000',
     box_number: '',
-    brand_id: 0,
+    brand_id: 1, // Default to brand_id 1
     category_id: 0,
     meta_title: '',
     meta_description: '',
@@ -220,21 +220,32 @@ const ProductsPage: React.FC = () => {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
         limit: pagination.limit.toString(),
-        search: searchTerm,
-        searchBy,
-        orderBy,
-        orderDirection,
+        ...(searchTerm && { search: searchTerm }),
+        ...(searchBy && { searchBy }),
         ...(brandFilter && { brand: brandFilter }),
         ...(categoryFilter && { categoryid: categoryFilter }),
-        ...(statusFilter && { status: statusFilter })
+        ...(statusFilter && { status: statusFilter }),
+        ...(orderBy && { orderBy }),
+        ...(orderDirection && { orderDirection })
       });
-
-      const response = await fetch(`${API_BASE}/products/paginated?${params}`);
+      const response = await fetch(`${API_BASE}/admin/products?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setProducts(data.products);
-        setPagination(data.pagination);
-        toast.success(`Loaded ${data.products.length} products`);
+        setProducts(data.products || data); // Handle both new and old format
+        if (data.pagination) {
+          setPagination(prev => ({ ...prev, ...data.pagination }));
+        } else {
+          // Fallback for old format
+          setPagination(prev => ({ 
+            ...prev, 
+            total: data.length || 0, 
+            totalPages: 1, 
+            hasNext: false, 
+            hasPrev: false 
+          }));
+        }
+        const productCount = data.products ? data.products.length : data.length;
+        toast.success(`Loaded ${productCount} products`);
       } else {
         toast.error('Failed to load products');
       }
@@ -244,7 +255,7 @@ const ProductsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, searchTerm, searchBy, brandFilter, categoryFilter, statusFilter, orderBy, orderDirection]);
+  }, [searchTerm, searchBy, brandFilter, categoryFilter, statusFilter, orderBy, orderDirection, pagination.page, pagination.limit, API_BASE]);
 
   useEffect(() => {
     loadProducts();
@@ -263,6 +274,33 @@ const ProductsPage: React.FC = () => {
     }
   }, []);
 
+  // Function to get contrast color for custom status badges
+  const getContrastColor = (hexColor: string): string => {
+    // Remove # if present
+    const hex = hexColor.replace('#', '');
+    
+    // Convert to RGB
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Calculate luminance
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return black for light backgrounds, white for dark backgrounds
+    return luminance > 0.5 ? '#000000' : '#FFFFFF';
+  };
+
+  // Function to convert product name to slug
+  const convertNameToSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/[\/\?&%$#@!*()+=]/g, '-') // Replace special characters with dashes
+      .replace(/-+/g, '-') // Replace multiple dashes with single dash
+      .replace(/^-|-$/g, ''); // Remove leading/trailing dashes
+  };
+
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -275,7 +313,16 @@ const ProductsPage: React.FC = () => {
       const keywords = value.split(',').map(kw => kw.trim()).filter(kw => kw.length > 0);
       setFormData(prev => ({ ...prev, [name]: keywords }));
     } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
+      setFormData(prev => {
+        const newData = { ...prev, [name]: value };
+        
+        // Auto-generate slug from name if slug is empty and name is being changed
+        if (name === 'name' && value && !prev.slug) {
+          newData.slug = convertNameToSlug(value);
+        }
+        
+        return newData;
+      });
     }
   };
 
@@ -310,7 +357,8 @@ const ProductsPage: React.FC = () => {
   const handleMainCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = parseInt(e.target.value);
     setSelectedMainCategory(value);
-    setFormData(prev => ({ ...prev, category_id: 0 })); // Reset subcategory
+    // Assign main category ID to product form if no subcategory is selected
+    setFormData(prev => ({ ...prev, category_id: value }));
   };
 
   // Handle subcategory change
@@ -371,6 +419,10 @@ const ProductsPage: React.FC = () => {
           formDataToSend.append(key, jsonString);
         } else if (key === 'long_description') {
           formDataToSend.append(key, longDescriptionContent);
+        } else if (key === 'slug' && (!value || value.trim() === '')) {
+          // Auto-generate slug from name if empty
+          const generatedSlug = convertNameToSlug(formData.name);
+          formDataToSend.append(key, generatedSlug);
         } else if (value !== null && value !== undefined && value !== '') {
           formDataToSend.append(key, value.toString());
         }
@@ -427,6 +479,10 @@ const ProductsPage: React.FC = () => {
           formDataToSend.append(key, jsonString);
         } else if (key === 'long_description') {
           formDataToSend.append(key, longDescriptionContent);
+        } else if (key === 'slug' && (!value || value.trim() === '')) {
+          // Auto-generate slug from name if empty
+          const generatedSlug = convertNameToSlug(formData.name);
+          formDataToSend.append(key, generatedSlug);
         } else if (value !== null && value !== undefined && value !== '') {
           formDataToSend.append(key, value.toString());
         }
@@ -507,7 +563,7 @@ const ProductsPage: React.FC = () => {
       custom_status: '',
       custom_status_color: '#FF0000',
       box_number: '',
-      brand_id: 0,
+      brand_id: 1, // Default to brand_id 1
       category_id: 0,
       meta_title: '',
       meta_description: '',
@@ -546,7 +602,7 @@ const ProductsPage: React.FC = () => {
           custom_status: fullProduct.custom_status || '',
           custom_status_color: fullProduct.custom_status_color || '#FF0000',
           box_number: fullProduct.box_number || '',
-          brand_id: fullProduct.brand_id || 0,
+          brand_id: fullProduct.brand_id || 1,
           category_id: fullProduct.category_id || 0,
           meta_title: fullProduct.meta_title || '',
           meta_description: fullProduct.meta_description || '',
@@ -798,12 +854,6 @@ const ProductsPage: React.FC = () => {
                               <span>Category: {product.category_name || 'N/A'}</span>
                               <span>Stock: {product.stock_quantity}</span>
                               <span>Box: {product.box_number || 'N/A'}</span>
-                              {product.is_custom_status && (
-                                <>
-                                  <span>Status: {product.custom_status}</span>
-                                  <span style={{ color: product.custom_status_color }}>•</span>
-                                </>
-                              )}
                             </div>
                           </div>
 
@@ -817,14 +867,23 @@ const ProductsPage: React.FC = () => {
                                 Offer: ${product.offer_price}
                               </div>
                             )}
-                            <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
-                              product.status === 'on_sale' ? 'bg-green-100 text-green-800' :
-                              product.status === 'out_of_stock' ? 'bg-red-100 text-red-800' :
-                              product.status === 'pre_order' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {product.status.replace('_', ' ')}
-                            </span>
+                            {product.is_custom_status ? (
+                              <span 
+                                className="inline-block px-2 py-1 text-xs rounded-full mt-1 text-white"
+                                style={{ backgroundColor: product.custom_status_color || '#000', color: getContrastColor(product.custom_status_color || '#000') }}
+                              >
+                                {product.custom_status}
+                              </span>
+                            ) : (
+                              <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                                product.status === 'on_sale' ? 'bg-green-100 text-green-800' :
+                                product.status === 'out_of_stock' ? 'bg-red-100 text-red-800' :
+                                product.status === 'pre_order' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {product.status.replace('_', ' ')}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -955,15 +1014,16 @@ const ProductsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
                   <input
                     type="text"
                     name="slug"
                     value={formData.slug}
                     onChange={handleInputChange}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2"
-                    required
+                    placeholder="Auto-generated from product name if left empty"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Leave empty to auto-generate from product name</p>
                 </div>
 
                 <div>
@@ -1230,17 +1290,6 @@ const ProductsPage: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Long Description</label>
                     <div className="border border-gray-300 rounded-lg">
-                      {/* Toolbar */}
-                      <div className="border-b border-gray-300 p-2 bg-gray-50">
-                        <button
-                          type="button"
-                          onClick={() => setShowYoutubeModal(true)}
-                          className="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 mr-2"
-                        >
-                          📺 YouTube
-                        </button>
-                        <span className="text-xs text-gray-500">Add rich content blocks</span>
-                      </div>
                       {/* Content Area */}
                       <TipTapEditor
                         content={longDescriptionContent}

@@ -1,9 +1,15 @@
 import { db } from "../config/database";
 
 export async function listProducts(query: any) {
-  // Filtering: brand, categoryid, price range
-  let sql = `SELECT product_id, name, slug, sell_price, offer_price, is_offer, status, stock_quantity, box_number, brand_id, category_id, primary_media_id FROM products WHERE 1=1`;
+  // Filtering: brand, categoryid, price range, sku
+  let sql = `SELECT product_id, name, slug, sku, sell_price, offer_price, is_offer, status, stock_quantity, box_number, brand_id, category_id, primary_media_id FROM products WHERE 1=1`;
   const params: any[] = [];
+  
+  if (query.sku) {
+    params.push(query.sku);
+    sql += ` AND sku = $${params.length}`;
+  }
+  
   if (query.brand) {
     params.push(query.brand);
     sql += ` AND brand_id = $${params.length}`;
@@ -507,3 +513,256 @@ export async function getProductBySlug(slug: string) {
   const media = await db.query("SELECT * FROM media WHERE product_id = $1 ORDER BY sort_order", [product.product_id]);
   return { ...product, media: media.rows };
 } 
+
+export async function listProductsAdmin(query: any) {
+  const {
+    page = 1,
+    limit = 20,
+    search = "",
+    searchBy = "name",
+    brand,
+    categoryid,
+    status,
+    sku,
+    price_from,
+    price_to,
+    orderBy = "created_at",
+    orderDirection = "DESC"
+  } = query;
+
+  const offset = (Number(page) - 1) * Number(limit);
+  
+  // Base query for products with all fields
+  let baseQuery = `
+    SELECT p.*, b.name as brand_name, c.name as category_name, m.image_url as primary_media
+    FROM products p
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN media m ON p.primary_media_id = m.media_id
+    WHERE 1=1
+  `;
+  
+  // Count query for pagination
+  let countQuery = `
+    SELECT COUNT(*) as total
+    FROM products p
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    WHERE 1=1
+  `;
+
+  const queryParams: any[] = [];
+  let paramIndex = 1;
+
+  // Add search conditions
+  if (search) {
+    const searchCondition = searchBy === 'brand' 
+      ? `b.name ILIKE $${paramIndex}`
+      : searchBy === 'sku'
+      ? `p.sku ILIKE $${paramIndex}`
+      : `p.name ILIKE $${paramIndex}`;
+    
+    baseQuery += ` AND ${searchCondition}`;
+    countQuery += ` AND ${searchCondition}`;
+    queryParams.push(`%${search}%`);
+    paramIndex++;
+  }
+
+  // Add filters
+  if (brand) {
+    baseQuery += ` AND p.brand_id = $${paramIndex}`;
+    countQuery += ` AND p.brand_id = $${paramIndex}`;
+    queryParams.push(brand);
+    paramIndex++;
+  }
+
+  if (categoryid) {
+    baseQuery += ` AND p.category_id = $${paramIndex}`;
+    countQuery += ` AND p.category_id = $${paramIndex}`;
+    queryParams.push(categoryid);
+    paramIndex++;
+  }
+
+  if (status) {
+    baseQuery += ` AND p.status = $${paramIndex}`;
+    countQuery += ` AND p.status = $${paramIndex}`;
+    queryParams.push(status);
+    paramIndex++;
+  }
+
+  if (sku) {
+    baseQuery += ` AND p.sku = $${paramIndex}`;
+    countQuery += ` AND p.sku = $${paramIndex}`;
+    queryParams.push(sku);
+    paramIndex++;
+  }
+
+  if (price_from) {
+    baseQuery += ` AND p.sell_price >= $${paramIndex}`;
+    countQuery += ` AND p.sell_price >= $${paramIndex}`;
+    queryParams.push(price_from);
+    paramIndex++;
+  }
+
+  if (price_to) {
+    baseQuery += ` AND p.sell_price <= $${paramIndex}`;
+    countQuery += ` AND p.sell_price <= $${paramIndex}`;
+    queryParams.push(price_to);
+    paramIndex++;
+  }
+
+  // Add ordering
+  const validOrderFields = ['name', 'sku', 'sell_price', 'stock_quantity', 'created_at', 'updated_at', 'product_id'];
+  const validOrderDirections = ['ASC', 'DESC'];
+  
+  const finalOrderBy = validOrderFields.includes(orderBy) ? orderBy : 'created_at';
+  const finalOrderDirection = validOrderDirections.includes(orderDirection.toUpperCase()) ? orderDirection.toUpperCase() : 'DESC';
+  
+  baseQuery += ` ORDER BY p.${finalOrderBy} ${finalOrderDirection}`;
+  baseQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(limit, offset);
+
+  // Execute both queries
+  const [productsResult, countResult] = await Promise.all([
+    db.query(baseQuery, queryParams),
+    db.query(countQuery, queryParams.slice(0, -2)) // Remove limit and offset for count
+  ]);
+
+  const total = parseInt(countResult.rows[0].total);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    products: productsResult.rows,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      totalPages,
+      hasNext: Number(page) < totalPages,
+      hasPrev: Number(page) > 1
+    }
+  };
+}
+
+interface ShopParams {
+  page: number;
+  limit: number;
+  search?: string;
+  category_ids?: number[];
+  brand_id?: number;
+  price_min?: number;
+  price_max?: number;
+  sort_by?: string;
+  sort_order?: string;
+}
+
+export async function getShopProducts(params: ShopParams) {
+  const {
+    page = 1,
+    limit = 20,
+    search,
+    category_ids,
+    brand_id,
+    price_min,
+    price_max,
+    sort_by = 'created_at',
+    sort_order = 'DESC'
+  } = params;
+
+  let sql = `SELECT 
+    p.product_id,
+    p.name,
+    p.slug,
+    p.sku,
+    p.short_description,
+    p.sell_price,
+    p.offer_price,
+    p.is_offer,
+    p.status,
+    p.stock_quantity,
+    p.is_custom_status,
+    p.custom_status,
+    p.custom_status_color,
+    p.created_at,
+    b.name as brand_name,
+    c.name as category_name,
+    m.image_url as primary_media
+  FROM products p
+  LEFT JOIN brands b ON p.brand_id = b.brand_id
+  LEFT JOIN categories c ON p.category_id = c.category_id
+  LEFT JOIN media m ON p.primary_media_id = m.media_id
+  WHERE p.status IN ('on_sale', 'out_of_stock', 'custom')`;
+
+  const queryParams: any[] = [];
+  let paramCount = 0;
+
+  // Add search filter
+  if (search) {
+    paramCount++;
+    queryParams.push(`%${search}%`);
+    sql += ` AND (p.name ILIKE $${paramCount} OR p.sku ILIKE $${paramCount} OR p.short_description ILIKE $${paramCount})`;
+  }
+
+  // Add multiple categories filter
+  if (category_ids && category_ids.length > 0) {
+    const placeholders = category_ids.map(() => `$${++paramCount}`).join(',');
+    queryParams.push(...category_ids);
+    sql += ` AND p.category_id IN (${placeholders})`;
+  }
+
+  // Add brand filter
+  if (brand_id) {
+    paramCount++;
+    queryParams.push(brand_id);
+    sql += ` AND p.brand_id = $${paramCount}`;
+  }
+
+  // Add price range filter
+  if (price_min !== undefined) {
+    paramCount++;
+    queryParams.push(price_min);
+    sql += ` AND p.sell_price >= $${paramCount}`;
+  }
+
+  if (price_max !== undefined) {
+    paramCount++;
+    queryParams.push(price_max);
+    sql += ` AND p.sell_price <= $${paramCount}`;
+  }
+
+  // Get total count for pagination
+  const countSql = sql.replace(/SELECT.*FROM/, 'SELECT COUNT(*) as total FROM');
+  const countResult = await db.query(countSql, queryParams);
+  const totalCount = parseInt(countResult.rows[0].total);
+
+  // Add sorting
+  const validSortFields = ['name', 'sell_price', 'created_at', 'stock_quantity'];
+  const validSortOrders = ['ASC', 'DESC'];
+  
+  const finalSortBy = validSortFields.includes(sort_by) ? sort_by : 'created_at';
+  const finalSortOrder = validSortOrders.includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
+  
+  sql += ` ORDER BY p.${finalSortBy} ${finalSortOrder}`;
+
+  // Add pagination
+  const offset = (page - 1) * limit;
+  paramCount++;
+  queryParams.push(limit);
+  paramCount++;
+  queryParams.push(offset);
+  sql += ` LIMIT $${paramCount - 1} OFFSET $${paramCount}`;
+
+  const result = await db.query(sql, queryParams);
+  
+  return {
+    products: result.rows,
+    pagination: {
+      page,
+      limit,
+      total: totalCount,
+      totalPages: Math.ceil(totalCount / limit),
+      hasNext: page < Math.ceil(totalCount / limit),
+      hasPrev: page > 1
+    }
+  };
+}

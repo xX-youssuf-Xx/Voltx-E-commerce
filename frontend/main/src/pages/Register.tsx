@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
+import PasswordRequirements from '../components/PasswordRequirements';
 import { useAuth } from '../contexts/AuthContext';
+import { validatePassword, getPasswordStrength } from '../utils/passwordValidation';
 import logo from '/voltx.jpg';
 
 const Register = () => {
@@ -13,6 +15,8 @@ const Register = () => {
     confirmPassword: '',
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
   const { signup, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
 
@@ -23,6 +27,13 @@ const Register = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Update password strength when password changes
+    if (name === 'password') {
+      setPasswordStrength(getPasswordStrength(value));
+      setShowPasswordRequirements(true);
+    }
+    
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -46,8 +57,11 @@ const Register = () => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else {
+      const passwordValidation = validatePassword(formData.password);
+      if (!passwordValidation.isValid) {
+        newErrors.password = passwordValidation.errors[0]; // Show first error
+      }
     }
 
     if (!formData.confirmPassword) {
@@ -72,6 +86,24 @@ const Register = () => {
       navigate('/');
     } catch (err) {
       // Error is handled by the AuthContext
+    }
+  };
+
+  const getStrengthColor = (strength: 'weak' | 'medium' | 'strong') => {
+    switch (strength) {
+      case 'weak': return 'text-red-500';
+      case 'medium': return 'text-yellow-500';
+      case 'strong': return 'text-green-500';
+      default: return 'text-gray-500';
+    }
+  };
+
+  const getStrengthText = (strength: 'weak' | 'medium' | 'strong') => {
+    switch (strength) {
+      case 'weak': return 'Weak';
+      case 'medium': return 'Medium';
+      case 'strong': return 'Strong';
+      default: return 'Weak';
     }
   };
 
@@ -159,6 +191,18 @@ const Register = () => {
                     : 'border-gray-300 bg-white'
                 }`}
                 placeholder="Enter your password"
+              />
+              {formData.password && (
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Strength:</span>
+                  <span className={`text-xs font-medium ${getStrengthColor(passwordStrength)}`}>
+                    {getStrengthText(passwordStrength)}
+                  </span>
+                </div>
+              )}
+              <PasswordRequirements 
+                password={formData.password} 
+                showRequirements={showPasswordRequirements} 
               />
               {errors.password && (
                 <p className="mt-1 text-xs text-red-600">{errors.password}</p>

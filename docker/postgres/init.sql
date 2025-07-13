@@ -220,19 +220,26 @@ CREATE TABLE discounts (
     FOREIGN KEY (created_by) REFERENCES users(user_id)
 );
 
--- Sharable Carts Table
+-- Carts Table (for sharing cart functionality)
 CREATE TABLE carts (
     cart_id BIGSERIAL PRIMARY KEY,
-    shareable_code VARCHAR(6) UNIQUE NOT NULL,
-    user_id BIGINT,
-    -- Storing product IDs and quantities in JSONB.
-    -- e.g., {"prod_123": 2, "prod_456": 1}
-    products JSONB NOT NULL DEFAULT '{}'::jsonb,
-    
+    user_id BIGINT NOT NULL,
+    products JSONB NOT NULL DEFAULT '{}', -- {product_id: quantity}
+    shareable_code VARCHAR(20) UNIQUE NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- Wishlist Table
+CREATE TABLE wishlist (
+    wishlist_id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    product_id BIGINT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(user_id, product_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
 );
 
 -- Orders Table

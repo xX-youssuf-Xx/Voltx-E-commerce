@@ -77,4 +77,14 @@ export const reorderSection = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to reorder section' });
     return;
   }
+};
+
+// New controller function for homepage data
+export const getHomepageData = async (req: Request, res: Response) => {
+  try {
+    const homepageData = await homepageService.getHomepageData();
+    res.json(homepageData);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch homepage data' });
+  }
 }; 

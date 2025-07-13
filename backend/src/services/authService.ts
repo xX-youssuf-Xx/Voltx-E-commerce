@@ -1,11 +1,18 @@
 import { Client } from "pg";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { validatePassword } from "../utils/passwordValidation";
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 client.connect();
 
 export async function register(name: string, email: string, pass: string) {
+  // Validate password requirements
+  const passwordValidation = validatePassword(pass);
+  if (!passwordValidation.isValid) {
+    throw new Error(passwordValidation.errors[0]); // Return first error
+  }
+
   // Check if user exists
   const existing = await client.query("SELECT * FROM users WHERE email = $1", [email]);
   if (existing.rows.length > 0) {

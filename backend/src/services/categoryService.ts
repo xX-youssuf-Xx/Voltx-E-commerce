@@ -142,4 +142,21 @@ export async function deleteCategory(id: number) {
   }
 
   await db.query("DELETE FROM categories WHERE category_id = $1", [id]);
-} 
+}
+
+export async function getCategoriesWithSubcategories() {
+  // Get all categories
+  const allCategories = await db.query("SELECT * FROM categories ORDER BY name");
+  
+  // Separate parent and child categories
+  const parentCategories = allCategories.rows.filter(cat => cat.parent_id === null);
+  const childCategories = allCategories.rows.filter(cat => cat.parent_id !== null);
+  
+  // Build hierarchy
+  const categoriesWithChildren = parentCategories.map(parent => ({
+    ...parent,
+    subcategories: childCategories.filter(child => child.parent_id === parent.category_id)
+  }));
+  
+  return categoriesWithChildren;
+}
