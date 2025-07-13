@@ -321,7 +321,7 @@ export const MediaDocsModal: React.FC<MediaDocsModalProps> = ({ open, onClose, p
                 </div>
               ) : docs.length > 0 ? (
                 <div className="space-y-3">
-                  {docs.map(doc => (
+              {docs.map(doc => (
                     <div key={doc.document_id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                       <div className="flex items-center space-x-3 flex-1 min-w-0">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">

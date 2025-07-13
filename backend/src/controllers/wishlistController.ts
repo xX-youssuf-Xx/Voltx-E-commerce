@@ -20,8 +20,10 @@ export async function addToWishlist(req: AuthRequest, res: Response) {
     }
 
     res.status(201).json({ message: 'Added to wishlist', wishlist_item: result });
+    return;
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+    return;
   }
 }
 
@@ -40,8 +42,10 @@ export async function removeFromWishlist(req: AuthRequest, res: Response) {
     }
 
     res.json({ message: 'Removed from wishlist' });
+    return;
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+    return;
   }
 }
 
@@ -54,8 +58,10 @@ export async function getWishlist(req: AuthRequest, res: Response) {
 
     const wishlist = await wishlistService.getWishlist(userId);
     res.json(wishlist);
+    return;
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+    return;
   }
 }
 
@@ -74,7 +80,9 @@ export async function getWishlistStatus(req: AuthRequest, res: Response) {
     const productIds = product_ids.map(id => Number(id));
     const status = await wishlistService.getWishlistStatus(userId, productIds);
     res.json(status);
+    return;
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+    return;
   }
 } 

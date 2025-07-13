@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
 import { ChevronDown, ChevronUp, Heart, ShoppingCart, Filter, X } from 'lucide-react';
@@ -65,9 +65,6 @@ const ShopPage: React.FC = () => {
   const [pagination, setPagination] = useState<ShopProductsResponse['pagination'] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingFeatured, setLoadingFeatured] = useState<boolean>(true);
-  const [wishlistStatus, setWishlistStatus] = useState<Record<string, boolean>>({});
-  const [cartLoading, setCartLoading] = useState<Record<string, boolean>>({});
-  const [wishlistLoading, setWishlistLoading] = useState<Record<string, boolean>>({});
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState<boolean>(false);
 
   const { cart, wishlist, addToCart, addToWishlist } = useCartWishlist();
@@ -144,30 +141,6 @@ const ShopPage: React.FC = () => {
       .finally(() => setLoadingFeatured(false));
   }, []);
 
-  // Fetch wishlist status for products
-  const fetchWishlistStatus = async (productIds: number[]) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const params = new URLSearchParams();
-      productIds.forEach(id => params.append('product_ids', String(id)));
-      
-      const response = await fetch(`${API_BASE}/wishlist/status?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (response.ok) {
-        const status = await response.json();
-        setWishlistStatus(status);
-      }
-    } catch (error) {
-      console.error('Error fetching wishlist status:', error);
-    }
-  };
-
   // Handlers
   const handleCategoryToggle = (catId: number) => {
     setExpandedCategories(prev => {
@@ -239,82 +212,6 @@ const ShopPage: React.FC = () => {
   const handleApplyFilters = () => {
     handleApplyPriceFilter();
     setIsFilterSidebarOpen(false);
-  };
-
-  // Cart and Wishlist handlers
-  const handleAddToCart = async (productId: string) => {
-    setCartLoading(prev => ({ ...prev, [productId]: true }));
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Please login to add items to cart');
-        return;
-      }
-
-      const response = await fetch(`${API_BASE}/carts`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          products: { [productId]: 1 }
-        })
-      });
-
-      if (response.ok) {
-        alert('Added to cart successfully!');
-      } else {
-        alert('Failed to add to cart');
-      }
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-      alert('Error adding to cart');
-    } finally {
-      setCartLoading(prev => ({ ...prev, [productId]: false }));
-    }
-  };
-
-  const handleToggleWishlist = async (productId: string) => {
-    setWishlistLoading(prev => ({ ...prev, [productId]: true }));
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        alert('Please login to manage wishlist');
-        return;
-      }
-
-      const isInWishlist = wishlistStatus[productId];
-      const url = isInWishlist 
-        ? `${API_BASE}/wishlist/${productId}`
-        : `${API_BASE}/wishlist`;
-      
-      const method = isInWishlist ? 'DELETE' : 'POST';
-      const body = isInWishlist ? undefined : JSON.stringify({ product_id: productId });
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body
-      });
-
-      if (response.ok) {
-        setWishlistStatus(prev => ({
-          ...prev,
-          [productId]: !isInWishlist
-        }));
-      } else {
-        alert(isInWishlist ? 'Failed to remove from wishlist' : 'Failed to add to wishlist');
-      }
-    } catch (error) {
-      console.error('Error toggling wishlist:', error);
-      alert('Error managing wishlist');
-    } finally {
-      setWishlistLoading(prev => ({ ...prev, [productId]: false }));
-    }
   };
 
   // Product Card

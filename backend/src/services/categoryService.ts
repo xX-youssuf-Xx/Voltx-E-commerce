@@ -142,7 +142,7 @@ export async function deleteCategory(id: number) {
   }
 
   await db.query("DELETE FROM categories WHERE category_id = $1", [id]);
-}
+} 
 
 export async function getCategoriesWithSubcategories() {
   // Get all categories

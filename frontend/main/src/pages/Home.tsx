@@ -1,6 +1,6 @@
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Heart, ShoppingCart } from 'lucide-react';
 import { useCartWishlist } from '../contexts/CartWishlistContext';
 
@@ -170,17 +170,55 @@ const Home = () => {
     }
     const isInWishlist = wishlist.includes(product.product_id);
     const cartItem = cart.find(item => item.productId === product.product_id);
-    const isHovered = hoveredCard === product.product_id;
-    const badgeText = getBadgeText(product);
-    const badgeClasses = getBadgeClasses(product);
-    const badgeStyle = getBadgeStyle(product);
+    // Inline badge text
+    let badgeText = '';
+    if (product.is_custom_status && product.custom_status) {
+      badgeText = product.custom_status;
+    } else if (product.is_offer) {
+      badgeText = 'Sale';
+    } else {
+      switch (product.status) {
+        case 'on_sale': badgeText = 'In Stock'; break;
+        case 'out_of_stock': badgeText = 'Out of Stock'; break;
+        case 'pre_order': badgeText = 'Pre Order'; break;
+        case 'discontinued': badgeText = 'Discontinued'; break;
+        default: badgeText = 'Available';
+      }
+    }
+    // Inline badge classes
+    let badgeClasses = '';
+    if (product.is_custom_status && product.custom_status) {
+      badgeClasses = 'text-white';
+    } else if (product.is_offer) {
+      badgeClasses = 'bg-orange-500 text-white';
+    } else {
+      switch (product.status) {
+        case 'on_sale': badgeClasses = 'bg-green-500 text-white'; break;
+        case 'out_of_stock': badgeClasses = 'bg-gray-500 text-white'; break;
+        case 'pre_order': badgeClasses = 'bg-purple-500 text-white'; break;
+        case 'discontinued': badgeClasses = 'bg-red-500 text-white'; break;
+        default: badgeClasses = 'bg-gray-500 text-white';
+      }
+    }
+    // Inline badge style
+    let badgeStyle: React.CSSProperties = {};
+    if (product.is_custom_status && product.custom_status_color) {
+      // Contrast color logic
+      const hex = product.custom_status_color.replace('#', '');
+      const r = parseInt(hex.substr(0, 2), 16);
+      const g = parseInt(hex.substr(2, 2), 16);
+      const b = parseInt(hex.substr(4, 2), 16);
+      const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      badgeStyle = {
+        backgroundColor: product.custom_status_color,
+        color: luminance > 0.5 ? '#000000' : '#FFFFFF',
+      };
+    }
     const MEDIA_BASE = import.meta.env.VITE_API_MEDIA_URL || 'http://localhost:3005';
     const placeholderImage = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NzM4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg==';
     return (
       <div
-        className={`relative group bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden hover:scale-105 hover:-translate-y-1 cursor-pointer ${isHovered ? 'shadow-xl scale-105 -translate-y-1' : ''}`}
-        onMouseEnter={() => handleCardMouseEnter(product.product_id)}
-        onMouseLeave={() => handleCardMouseLeave(product.product_id)}
+        className="relative group bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden hover:scale-105 hover:-translate-y-1 cursor-pointer"
         onClick={() => window.location.href = `/product/${product.slug}`}
       >
         {/* Badge */}

@@ -16,7 +16,8 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization header missing or invalid' });
+      res.status(401).json({ error: 'Authorization header missing or invalid' });
+      return;
     }
 
     const token = authHeader.substring(7);
@@ -25,7 +26,8 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     const decoded = jwt.verify(token, jwtSecret) as any;
     
     if (!decoded || !decoded.user_id) {
-      return res.status(401).json({ error: 'Invalid token' });
+      res.status(401).json({ error: 'Invalid token' });
+      return;
     }
 
     // Get user from database
@@ -35,13 +37,16 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'User not found' });
+      res.status(401).json({ error: 'User not found' });
+      return;
     }
 
     req.user = result.rows[0];
     next();
+    return;
   } catch (error) {
     console.error('Authentication error:', error);
     res.status(401).json({ error: 'Invalid token' });
+    return;
   }
 } 
