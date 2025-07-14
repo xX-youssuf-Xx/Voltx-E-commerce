@@ -482,3 +482,13 @@ export async function getProductsByIds(req: Request, res: Response) {
     return;
   }
 }
+
+export async function fuzzySearchProducts(req: Request, res: Response) {
+  try {
+    const q = req.query.q || '';
+    const results = await productService.fuzzySearchProducts(String(q));
+    return res.json(results);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}

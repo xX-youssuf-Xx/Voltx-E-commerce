@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getProductById, getProductShortInfo, getProductBySlug, listProducts, getPaginatedProducts, generateSKU, createProduct, updateProduct, deleteProduct, addProductMedia, deleteProductMedia, listProductDocs, addProductDoc, deleteProductDoc, updateProductDoc, getShopProducts, getProductsByIds } from "../controllers/productController";
+import { getProductById, getProductShortInfo, getProductBySlug, listProducts, getPaginatedProducts, generateSKU, createProduct, updateProduct, deleteProduct, addProductMedia, deleteProductMedia, listProductDocs, addProductDoc, deleteProductDoc, updateProductDoc, getShopProducts, getProductsByIds, fuzzySearchProducts } from "../controllers/productController";
 import { authenticate } from "../middlewares/authMiddleware";
 import { authorize } from "../middlewares/roleMiddleware";
 import multer from "multer";
@@ -31,6 +31,7 @@ router.get("/", listProducts); // filter, list
 router.get("/paginated", getPaginatedProducts); // paginated list
 router.get("/shop", getShopProducts); // shop products with filtering, sorting, pagination
 router.get("/generate-sku", generateSKU); // generate unique SKU
+router.get("/search", fuzzySearchProducts);
 router.get("/:id", getProductById); // details
 router.get("/:id/short", getProductShortInfo); // short info
 router.get("/slug/:slug", getProductBySlug);

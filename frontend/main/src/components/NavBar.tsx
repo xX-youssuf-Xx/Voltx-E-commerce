@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCartWishlist } from '../contexts/CartWishlistContext';
 import logo from '/voltx.jpg';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3005/api';
+
 const NavBar = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isProfileOpen, setProfileOpen] = useState(false);
@@ -17,6 +19,56 @@ const NavBar = () => {
   // Cart and wishlist counts
   const cartCount = cart.length;
   const wishlistCount = wishlist.length;
+
+  // Fuzzy search state
+  const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  // Debounce search
+  useEffect(() => {
+    if (!search) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    setSearchLoading(true);
+    const handler = setTimeout(() => {
+      fetch(`${API_BASE}/products/search?q=${encodeURIComponent(search)}`)
+        .then(res => res.json())
+        .then(data => {
+          setSearchResults(Array.isArray(data) ? data : []);
+          setShowDropdown(true);
+        })
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearchLoading(false));
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        searchRef.current &&
+        !searchRef.current.contains(e.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleResultClick = (slug: string) => {
+    setShowDropdown(false);
+    setSearch('');
+    navigate(`${import.meta.env.VITE_API_MEDIA_URL}/product/${slug}`);
+  };
 
   // Close sidebar when clicking outside
   useEffect(() => {
@@ -59,9 +111,9 @@ const NavBar = () => {
     <>
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-blue-100 px-6 md:px-10 py-4 shadow-sm bg-white relative z-40" style={{ fontFamily: 'Plus Jakarta Sans, Noto Sans, sans-serif' }}>
         {/* Logo */}
-        <a href="https://voltx-store.com" className="flex items-center gap-3 text-gray-900" target="_blank" rel="noopener noreferrer">
-<img src={logo} alt="logo" className="h-8 w-8 text-blue-600" />
-          <h1 className="hidden md:block text-gray-900 text-xl font-bold leading-tight tracking-tight">Voltx</h1>
+        <a href="https://voltx-store.com" className="flex items-end gap-1 text-gray-900" target="_blank" rel="noopener noreferrer">
+<img src={logo} alt="logo" className="h-12 w-12 text-blue-600" />
+          <h1 className="hidden md:block text-3xl font-bold leading-tight tracking-tight lowercase bg-gradient-to-b from-[#014981] to-[#019aca] text-transparent bg-clip-text" style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>voltx</h1>
         </a>
 
         {/* Desktop Navigation */}
@@ -75,26 +127,110 @@ const NavBar = () => {
 
         {/* Desktop Search - Centered */}
         <div className="hidden md:flex flex-1 justify-center mx-8">
-          <label className="relative flex items-center w-full max-w-md h-10">
+          <div className="relative w-full max-w-md">
+            <label className="flex items-center w-full h-10">
             <div className="absolute left-3 text-gray-500">
               <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px" xmlns="http://www.w3.org/2000/svg">
                 <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
               </svg>
       </div>
-            <input className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors" placeholder="Search products..." />
+            <input
+              ref={searchRef}
+              className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors"
+              placeholder="Search products..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={() => search && setShowDropdown(true)}
+              autoComplete="off"
+            />
           </label>
-    </div>
+          {/* Search Results Dropdown */}
+          {showDropdown && (
+            <div ref={dropdownRef} className="absolute left-0 top-full mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg z-50 overflow-hidden">
+              {searchLoading ? (
+                <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">No results found</div>
+              ) : (
+                <ul className="divide-y divide-blue-50">
+                  {searchResults.map((product) => (
+                    <li key={product.product_id} className="p-0 m-0">
+                      <button
+                        type="button"
+                        className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-blue-50 transition-colors focus:outline-none"
+                        onClick={() => handleResultClick(product.slug)}
+                        tabIndex={0}
+                      >
+                        <img
+                          src={product.primary_media ? `${import.meta.env.VITE_API_MEDIA_URL || 'http://localhost:3000'}${product.primary_media}` : ''}
+                          alt={product.name}
+                          className="w-12 h-12 object-contain rounded-md bg-gray-50 border border-gray-100"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">{product.name}</div>
+                          <div className="text-blue-700 font-bold text-base">{product.sell_price} EGP</div>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          </div>
+        </div>
 
         {/* Mobile Search Bar */}
-        <div className="flex-1 mx-4 md:hidden">
+        <div className="flex-1 mx-4 md:hidden relative">
           <label className="relative flex items-center w-full h-10">
-        <div className="absolute left-3 text-gray-500">
-          <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px" xmlns="http://www.w3.org/2000/svg">
-            <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
-          </svg>
-        </div>
-        <input className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors" placeholder="Search products..." />
-      </label>
+            <div className="absolute left-3 text-gray-500">
+              <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px" xmlns="http://www.w3.org/2000/svg">
+                <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
+              </svg>
+            </div>
+            <input
+              ref={searchRef}
+              className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors"
+              placeholder="Search products..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onFocus={() => search && setShowDropdown(true)}
+              autoComplete="off"
+            />
+          </label>
+          {/* Search Results Dropdown (mobile) */}
+          {showDropdown && (
+            <div ref={dropdownRef} className="absolute left-0 top-full mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg z-50 overflow-hidden">
+              {searchLoading ? (
+                <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">No results found</div>
+              ) : (
+                <ul className="divide-y divide-blue-50">
+                  {searchResults.map((product) => (
+                    <li key={product.product_id} className="p-0 m-0">
+                      <button
+                        type="button"
+                        className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-blue-50 transition-colors focus:outline-none"
+                        onClick={() => handleResultClick(product.slug)}
+                        tabIndex={0}
+                      >
+                        <img
+                          src={product.primary_media ? `${import.meta.env.VITE_API_MEDIA_URL || 'http://localhost:3005'}${product.primary_media}` : ''}
+                          alt={product.name}
+                          className="w-12 h-12 object-contain rounded-md bg-gray-50 border border-gray-100"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">{product.name}</div>
+                          <div className="text-blue-700 font-bold text-base">{product.sell_price} EGP</div>
+                        </div>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Desktop Right Side - Cart, Wishlist, Profile/Auth */}
@@ -193,9 +329,9 @@ const NavBar = () => {
           {/* Sidebar Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <a href="https://voltx-store.com" className="flex items-center gap-3 text-gray-900" target="_blank" rel="noopener noreferrer">
-                <img src={logo} alt="logo" className="h-8 w-8 text-blue-600" />
-                <h2 className="text-lg font-semibold text-gray-900">Voltx</h2>
+              <a href="https://voltx-store.com" className="flex items-end gap-1 text-gray-900" target="_blank" rel="noopener noreferrer">
+                <img src={logo} alt="logo" className="h-10 w-10 text-blue-600" />
+                <h2 className="text-xl font-semibold lowercase bg-gradient-to-b from-[#014981] to-[#019aca] text-transparent bg-clip-text" style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>voltx</h2>
               </a>
             </div>
             <button 

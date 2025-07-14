@@ -786,3 +786,45 @@ export async function getProductsByIds(ids: string[]) {
   const { rows } = await db.query(query, numericIds);
   return rows;
 }
+
+// Fuzzy search for products by name, slug, or SKU
+export async function fuzzySearchProducts(query: string) {
+  if (!query || query.trim().length === 0) return [];
+  // Use ILIKE for basic fuzzy, and similarity if pg_trgm is enabled
+  // Try similarity first, fallback to ILIKE if error
+  let sql = `
+    SELECT p.product_id, p.name, p.slug, p.sell_price, m.image_url as primary_media
+    FROM products p
+    LEFT JOIN media m ON p.primary_media_id = m.media_id
+    WHERE (
+      p.name ILIKE $1
+      OR p.slug ILIKE $1
+      OR p.sku ILIKE $1
+    )
+    ORDER BY p.name ASC
+    LIMIT 10
+  `;
+  const params = [`%${query}%`];
+  try {
+    // Try similarity if available
+    const simSql = `
+      SELECT p.product_id, p.name, p.slug, p.sell_price, m.image_url as primary_media
+      FROM products p
+      LEFT JOIN media m ON p.primary_media_id = m.media_id
+      WHERE (
+        similarity(p.name, $1) > 0.2
+        OR similarity(p.slug, $1) > 0.2
+        OR similarity(p.sku, $1) > 0.2
+      )
+      ORDER BY GREATEST(similarity(p.name, $1), similarity(p.slug, $1), similarity(p.sku, $1)) DESC
+      LIMIT 10
+    `;
+    const { rows } = await db.query(simSql, [query]);
+    if (rows.length > 0) return rows;
+    // fallback to ILIKE if no results
+  } catch (e) {
+    // If pg_trgm is not enabled, fallback to ILIKE
+  }
+  const { rows } = await db.query(sql, params);
+  return rows;
+}
