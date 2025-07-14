@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getProductById, getProductShortInfo, getProductBySlug, listProducts, getPaginatedProducts, generateSKU, createProduct, updateProduct, deleteProduct, addProductMedia, deleteProductMedia, listProductDocs, addProductDoc, deleteProductDoc, updateProductDoc, getShopProducts } from "../controllers/productController";
+import { getProductById, getProductShortInfo, getProductBySlug, listProducts, getPaginatedProducts, generateSKU, createProduct, updateProduct, deleteProduct, addProductMedia, deleteProductMedia, listProductDocs, addProductDoc, deleteProductDoc, updateProductDoc, getShopProducts, getProductsByIds } from "../controllers/productController";
 import { authenticate } from "../middlewares/authMiddleware";
 import { authorize } from "../middlewares/roleMiddleware";
 import multer from "multer";
@@ -34,7 +34,8 @@ router.get("/generate-sku", generateSKU); // generate unique SKU
 router.get("/:id", getProductById); // details
 router.get("/:id/short", getProductShortInfo); // short info
 router.get("/slug/:slug", getProductBySlug);
-
+// Change from GET to POST for by-ids
+router.post('/by-ids', getProductsByIds);
 
 
 // Protected
@@ -45,7 +46,7 @@ router.post("/:id/media", authenticate, authorize("products", "update"), upload.
 router.delete("/:id/media/:mediaId", authenticate, authorize("products", "update"), deleteProductMedia);
 
 // DOCS ENDPOINTS
-router.get("/:id/docs", authenticate, authorize("products", "read"), listProductDocs);
+router.get("/:id/docs", listProductDocs);
 router.post("/:id/docs", authenticate, authorize("products", "update"), upload.single("file"), addProductDoc);
 router.delete("/:id/docs/:docId", authenticate, authorize("products", "update"), deleteProductDoc);
 router.put("/:id/docs/:docId", authenticate, authorize("products", "update"), upload.single("file"), updateProductDoc);

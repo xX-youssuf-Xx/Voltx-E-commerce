@@ -766,3 +766,23 @@ export async function getShopProducts(params: ShopParams) {
     }
   };
 }
+
+export async function getProductsByIds(ids: string[]) {
+  if (!ids.length) return [];
+  // Convert all ids to numbers and validate
+  const numericIds = ids.map(id => Number(id));
+  if (numericIds.some(id => isNaN(id))) {
+    throw new Error('One or more product IDs are invalid');
+  }
+  const placeholders = numericIds.map((_, i) => `$${i + 1}`).join(',');
+  const query = `
+    SELECT p.product_id, p.name, m.image_url as primary_media, p.sell_price, p.offer_price, p.is_offer, p.status, p.is_custom_status, p.custom_status, p.custom_status_color, b.name as brand_name, c.name as category_name, p.short_description, p.slug
+    FROM products p
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN media m ON p.primary_media_id = m.media_id
+    WHERE p.product_id IN (${placeholders})
+  `;
+  const { rows } = await db.query(query, numericIds);
+  return rows;
+}

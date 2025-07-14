@@ -460,3 +460,25 @@ export async function getShopProducts(req: Request, res: Response) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+export async function getProductsByIds(req: Request, res: Response) {
+  try {
+    const ids = req.body.ids;
+    if (!Array.isArray(ids)) {
+      return res.status(400).json({ error: 'ids must be an array' });
+    }
+    // Filter for valid positive integers only
+    const validIds = ids
+      .map(id => typeof id === 'string' ? id.trim() : String(id))
+      .filter(id => /^\d+$/.test(id));
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid ids provided' });
+    }
+    const products = await productService.getProductsByIds(validIds);
+    res.json(products);
+    return;
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+    return;
+  }
+}

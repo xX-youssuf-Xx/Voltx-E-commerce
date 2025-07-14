@@ -11,10 +11,11 @@ import LoginPage from './pages/Login';
 import RegisterPage from './pages/Register';
 import Wishlist from './pages/Wishlist';
 import MyOrders from './pages/MyOrders';
-import CartsPage from './pages/CartsPage';
 import Services from './pages/Services';
 import LinktreePage from './pages/LinktreePage';
 import ViewProductPage from './pages/viewProductPage';
+import CartPage from './pages/Cart';
+import SharedCartPage from './pages/SharedCartPage';
 
 function App() {
   return (
@@ -55,7 +56,8 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/my-orders" element={<MyOrders />} />
-            <Route path="/carts" element={<CartsPage />} />
+            <Route path="/cart" element={<CartPage />} />
+            <Route path="/cart/:cartId" element={<SharedCartPage />} />
             <Route path="/services" element={<Services />} />
             <Route path="/linktree" element={<LinktreePage />} />
             <Route path="/product/:slug" element={<ViewProductPage />} />

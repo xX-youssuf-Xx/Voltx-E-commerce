@@ -502,31 +502,36 @@ const ShopPage: React.FC = () => {
         
         {/* Mobile Toolbox */}
         <div className="lg:hidden mb-6">
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Show</label>
-              <select value={pageSize} onChange={handlePageSizeChange} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black">
-                {[10, 20, 40, 80].map(size => (
-                  <option key={size} value={size}>{size}</option>
-                ))}
-              </select>
-              <span className="text-sm text-gray-400">per page</span>
+          <div className="flex flex-col gap-2 mb-4">
+            <div className="flex items-center gap-2 justify-between w-full">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-700">Show</label>
+                <select value={pageSize} onChange={handlePageSizeChange} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black">
+                  {[10, 20, 40, 80].map(size => (
+                    <option key={size} value={size}>{size}</option>
+                  ))}
+                </select>
+                <span className="text-sm text-gray-400">per page</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-700">Sort by</label>
+                <select value={sortBy} onChange={handleSortChange} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black w-32">
+                  <option value="latest">Latest</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-700">Sort by</label>
-              <select value={sortBy} onChange={handleSortChange} className="border border-gray-300 rounded px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-black w-32">
-                <option value="latest">Latest</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-              </select>
+            <div className="flex justify-center mt-3">
+              <button
+                onClick={() => setIsFilterSidebarOpen(true)}
+                className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded transition w-1/2 justify-center"
+                style={{ minWidth: '140px', maxWidth: '300px' }}
+              >
+                <Filter size={16} />
+                Filters
+              </button>
             </div>
-            <button
-              onClick={() => setIsFilterSidebarOpen(true)}
-              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded transition"
-            >
-              <Filter size={16} />
-              Filters
-            </button>
           </div>
           <hr className="border-gray-300" />
         </div>

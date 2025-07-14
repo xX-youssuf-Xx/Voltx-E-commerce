@@ -649,9 +649,10 @@ const ProductsPage: React.FC = () => {
   };
 
   // Handle product name click
-  const handleProductNameClick = (e: React.MouseEvent, productId: number) => {
+  const handleProductNameClick = (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
-    window.open(`${MEDIA_BASE}/product/${productId}`, '_blank');
+    const productUrl = `https://voltx-store.com/product/${product.slug}`;
+    window.open(productUrl, '_blank');
   };
 
   // Test token storage
@@ -839,7 +840,7 @@ const ProductsPage: React.FC = () => {
                           <div className="flex-1">
                             <h3 
                               className="text-lg font-semibold text-gray-900 truncate cursor-pointer hover:text-blue-600"
-                              onClick={(e) => handleProductNameClick(e, product.product_id)}
+                              onClick={(e) => handleProductNameClick(e, product)}
                             >
                               {product.name}
                             </h3>

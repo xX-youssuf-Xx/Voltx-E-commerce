@@ -20,6 +20,11 @@ const socialLinks = [
     label: 'WhatsApp',
     icon: <FaWhatsapp size={20} color="#25D366" style={{ marginRight: 8 }} />,
   },
+  {
+    href: 'https://voltx-store.com',
+    label: 'Website',
+    icon: <img src={logo} alt="Voltx Logo" className="w-5 h-5 mr-2 rounded-full" />,
+  },
 ];
 
 const LinktreePage: React.FC = () => {

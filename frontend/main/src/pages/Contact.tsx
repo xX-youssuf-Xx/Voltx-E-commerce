@@ -21,12 +21,12 @@ const Contact = () => {
       <NavBar />
       <main className="min-h-[80vh] flex flex-col md:flex-row items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-50 py-8">
         <div className="w-full md:w-1/3 flex flex-col items-center px-4 md:px-4 mb-24 md:mb-0">
-          <div className="w-full h-64 md:h-96 rounded-2xl overflow-hidden shadow-lg border-2 border-blue-200">
+          <div className="w-full max-w-xl rounded-xl overflow-hidden shadow-lg">
             <iframe
-              title="Voltx Location"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3454.0123456789!2d31.235711315115!3d30.0444199818797!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x145840c123456789%3A0xabcdefabcdefabcd!2sCairo%2C%20Egypt!5e0!3m2!1sen!2seg!4v1680000000000!5m2!1sen!2seg"
+              title="Voltx Store Location"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4655.873751385271!2d31.3651372!3d31.0412413!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14f79d00389f50ff%3A0xdb26a929f5307f9f!2sVoltx%20store!5e1!3m2!1sen!2seg!4v1752217849073!5m2!1sen!2seg"
               width="100%"
-              height="100%"
+              height="320"
               style={{ border: 0 }}
               allowFullScreen
               loading="lazy"
