@@ -623,7 +623,6 @@ const ShopPage: React.FC = () => {
                   )}
                 </div>
               )}
-              {renderPagination()}
             </section>
           </main>
         </div>
@@ -642,9 +641,36 @@ const ShopPage: React.FC = () => {
               )}
             </div>
           )}
-          {renderPagination()}
         </div>
       </div>
+      {pagination && pagination.totalPages > 1 && (
+        <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-8">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-700">
+              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setPage(pagination.page - 1)}
+                disabled={pagination.page <= 1}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Previous
+              </button>
+              <span className="px-3 py-1 text-sm text-gray-700">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setPage(pagination.page + 1)}
+                disabled={pagination.page >= pagination.totalPages}
+                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Footer />
     </div>
   );

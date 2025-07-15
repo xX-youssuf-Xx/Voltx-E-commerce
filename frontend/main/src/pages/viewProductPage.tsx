@@ -249,7 +249,10 @@ const RelatedProductCard = ({ product }: { product: any }) => {
         />
       </div>
       <div className="p-2 md:p-3 lg:p-4 border-t border-gray-100">
-        <h3 className="text-xs md:text-sm font-semibold text-gray-900 mb-2 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
+        <h3 className="text-xs md:text-sm font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
+        {product.category_name && (
+          <div className="text-[11px] md:text-xs text-gray-500 mb-2">{product.category_name}</div>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">
             {product.is_offer && product.offer_price && (

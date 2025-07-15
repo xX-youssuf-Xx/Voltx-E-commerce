@@ -16,17 +16,20 @@ const NavBar = () => {
   const { cart, wishlist } = useCartWishlist();
   const navigate = useNavigate();
 
-  // Cart and wishlist counts
   const cartCount = cart.length;
   const wishlistCount = wishlist.length;
 
-  // Fuzzy search state
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const searchRef = useRef<HTMLInputElement | null>(null);
-  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  
+  // ✨ FIX 1: Create separate refs for BOTH inputs and dropdowns
+  const desktopSearchRef = useRef<HTMLInputElement | null>(null);
+  const mobileSearchRef = useRef<HTMLInputElement | null>(null);
+  const desktopDropdownRef = useRef<HTMLDivElement | null>(null);
+  const mobileDropdownRef = useRef<HTMLDivElement | null>(null);
+
   // Debounce search
   useEffect(() => {
     if (!search) {
@@ -39,27 +42,38 @@ const NavBar = () => {
       fetch(`${API_BASE}/products/search?q=${encodeURIComponent(search)}`)
         .then(res => res.json())
         .then(data => {
-          setSearchResults(Array.isArray(data) ? data : []);
+          const results = Array.isArray(data) ? data.slice(0, 8) : [];
+          setSearchResults(results);
           setShowDropdown(true);
         })
-        .catch(() => setSearchResults([]))
+        .catch(error => {
+          console.error('Search API error:', error);
+          setSearchResults([]);
+        })
         .finally(() => setSearchLoading(false));
     }, 300);
     return () => clearTimeout(handler);
   }, [search]);
 
-  // Close dropdown on click outside
+  // ✨ FIX 2: Update the click handler to correctly check all refs
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      
+      // If the click is inside any of the search components, do nothing.
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        searchRef.current &&
-        !searchRef.current.contains(e.target as Node)
+        (desktopSearchRef.current && desktopSearchRef.current.contains(target)) ||
+        (mobileSearchRef.current && mobileSearchRef.current.contains(target)) ||
+        (desktopDropdownRef.current && desktopDropdownRef.current.contains(target)) ||
+        (mobileDropdownRef.current && mobileDropdownRef.current.contains(target))
       ) {
-        setShowDropdown(false);
+        return;
       }
+      
+      // Otherwise, the click was outside, so close the dropdown.
+      setShowDropdown(false);
     };
+
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
@@ -67,10 +81,11 @@ const NavBar = () => {
   const handleResultClick = (slug: string) => {
     setShowDropdown(false);
     setSearch('');
-    navigate(`${import.meta.env.VITE_API_MEDIA_URL}/product/${slug}`);
+    navigate(`/product/${slug}`);
   };
 
-  // Close sidebar when clicking outside
+  // ... other hooks and handlers remain the same ...
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
@@ -80,12 +95,10 @@ const NavBar = () => {
         setProfileOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Prevent body scroll when sidebar is open
   useEffect(() => {
     if (isSidebarOpen) {
       document.body.style.overflow = 'hidden';
@@ -107,12 +120,13 @@ const NavBar = () => {
     setProfileOpen(false);
   };
 
+
   return (
     <>
       <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-blue-100 px-6 md:px-10 py-4 shadow-sm bg-white relative z-40" style={{ fontFamily: 'Plus Jakarta Sans, Noto Sans, sans-serif' }}>
         {/* Logo */}
-        <a href="https://voltx-store.com" className="flex items-end gap-1 text-gray-900" target="_blank" rel="noopener noreferrer">
-<img src={logo} alt="logo" className="h-12 w-12 text-blue-600" />
+        <a href="https://voltx-store.com" className="flex items-end gap-1 text-gray-900"  rel="noopener noreferrer">
+          <img src={logo} alt="logo" className="h-12 w-12 text-blue-600" />
           <h1 className="hidden md:block text-3xl font-bold leading-tight tracking-tight lowercase bg-gradient-to-b from-[#014981] to-[#019aca] text-transparent bg-clip-text" style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>voltx</h1>
         </a>
 
@@ -129,54 +143,54 @@ const NavBar = () => {
         <div className="hidden md:flex flex-1 justify-center mx-8">
           <div className="relative w-full max-w-md">
             <label className="flex items-center w-full h-10">
-            <div className="absolute left-3 text-gray-500">
-              <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px" xmlns="http://www.w3.org/2000/svg">
-                <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
-              </svg>
-      </div>
-            <input
-              ref={searchRef}
-              className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors"
-              placeholder="Search products..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              onFocus={() => search && setShowDropdown(true)}
-              autoComplete="off"
-            />
-          </label>
-          {/* Search Results Dropdown */}
-          {showDropdown && (
-            <div ref={dropdownRef} className="absolute left-0 top-full mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg z-50 overflow-hidden">
-              {searchLoading ? (
-                <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
-              ) : searchResults.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 text-sm">No results found</div>
-              ) : (
-                <ul className="divide-y divide-blue-50">
-                  {searchResults.map((product) => (
-                    <li key={product.product_id} className="p-0 m-0">
-                      <button
-                        type="button"
-                        className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-blue-50 transition-colors focus:outline-none"
-                        onClick={() => handleResultClick(product.slug)}
-                        tabIndex={0}
-                      >
-                        <img
-                          src={product.primary_media ? `${import.meta.env.VITE_API_MEDIA_URL || 'http://localhost:3000'}${product.primary_media}` : ''}
-                          alt={product.name}
-                          className="w-12 h-12 object-contain rounded-md bg-gray-50 border border-gray-100"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 truncate">{product.name}</div>
-                          <div className="text-blue-700 font-bold text-base">{product.sell_price} EGP</div>
-                        </div>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+              <div className="absolute left-3 text-gray-500">
+                <svg fill="currentColor" height="20px" viewBox="0 0 256 256" width="20px" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"></path>
+                </svg>
+              </div>
+              <input
+                ref={desktopSearchRef}
+                className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors"
+                placeholder="Search products..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onFocus={() => search && setShowDropdown(true)}
+                autoComplete="off"
+              />
+            </label>
+            {/* Search Results Dropdown */}
+            {showDropdown && (
+              // ✨ FIX 3: Assign desktop-specific dropdown ref
+              <div ref={desktopDropdownRef} className="absolute left-0 top-full mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg z-50 overflow-hidden">
+                {searchLoading ? (
+                  <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
+                ) : searchResults.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500 text-sm">No results found</div>
+                ) : (
+                  <ul className="divide-y divide-blue-50">
+                    {searchResults.map((product) => (
+                      <li key={product.product_id} className="p-0 m-0">
+                        <button
+                          type="button"
+                          className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-blue-50 transition-colors focus:outline-none"
+                          onClick={() => handleResultClick(product.slug)}
+                        >
+                          <img
+                            src={product.primary_media ? `${import.meta.env.VITE_API_MEDIA_URL || 'http://localhost:3005'}${product.primary_media}` : ''}
+                            alt={product.name}
+                            className="w-12 h-12 object-contain rounded-md bg-gray-50 border border-gray-100"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">{product.name}</div>
+                            <div className="text-blue-700 font-bold text-base">{product.sell_price} EGP</div>
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -189,7 +203,7 @@ const NavBar = () => {
               </svg>
             </div>
             <input
-              ref={searchRef}
+              ref={mobileSearchRef}
               className="form-input w-full rounded-lg border border-blue-100 bg-white focus:border-blue-600 focus:ring-1 focus:ring-blue-600 h-full placeholder:text-gray-500 pl-10 pr-4 py-2 text-sm font-normal leading-normal text-gray-900 transition-colors"
               placeholder="Search products..."
               value={search}
@@ -200,7 +214,8 @@ const NavBar = () => {
           </label>
           {/* Search Results Dropdown (mobile) */}
           {showDropdown && (
-            <div ref={dropdownRef} className="absolute left-0 top-full mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg z-50 overflow-hidden">
+            // ✨ FIX 4: Assign mobile-specific dropdown ref
+            <div ref={mobileDropdownRef} className="absolute left-0 top-full mt-2 w-full bg-white border border-blue-100 rounded-lg shadow-lg z-50 overflow-hidden">
               {searchLoading ? (
                 <div className="p-4 text-center text-gray-500 text-sm">Searching...</div>
               ) : searchResults.length === 0 ? (
@@ -232,7 +247,8 @@ const NavBar = () => {
             </div>
           )}
         </div>
-
+        
+        {/* ... The rest of your component remains the same ... */}
         {/* Desktop Right Side - Cart, Wishlist, Profile/Auth */}
         <div className="hidden md:flex items-center gap-4">
           {/* Cart */}
@@ -241,8 +257,8 @@ const NavBar = () => {
             className="flex items-center justify-center rounded-lg h-10 w-10 bg-transparent text-gray-900 hover:bg-blue-50 hover:text-blue-600 transition-colors relative"
             onClick={() => navigate('/cart')}
           >
-        <svg fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
-          <path d="M222.14,58.87A8,8,0,0,0,216,56H54.68L49.79,29.14A16,16,0,0,0,34.05,16H16a8,8,0,0,0,0,16h18L59.56,172.29a24,24,0,0,0,5.33,11.27,28,28,0,1,0,44.4,8.44h45.42A27.75,27.75,0,0,0,152,204a28,28,0,1,0,28-28H83.17a8,8,0,0,1-7.87-6.57L72.13,152h116a24,24,0,0,0,23.61-19.71l12.16-66.86A8,8,0,0,0,222.14,58.87ZM96,204a12,12,0,1,1-12-12A12,12,0,0,1,96,204Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,192,204Zm4-74.57A8,8,0,0,1,188.1,136H69.22L57.59,72H206.41Z"></path>
+            <svg fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
+              <path d="M222.14,58.87A8,8,0,0,0,216,56H54.68L49.79,29.14A16,16,0,0,0,34.05,16H16a8,8,0,0,0,0,16h18L59.56,172.29a24,24,0,0,0,5.33,11.27,28,28,0,1,0,44.4,8.44h45.42A27.75,27.75,0,0,0,152,204a28,28,0,1,0,28-28H83.17a8,8,0,0,1-7.87-6.57L72.13,152h116a24,24,0,0,0,23.61-19.71l12.16-66.86A8,8,0,0,0,222.14,58.87ZM96,204a12,12,0,1,1-12-12A12,12,0,0,1,96,204Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,192,204Zm4-74.57A8,8,0,0,1,188.1,136H69.22L57.59,72H206.41Z"></path>
             </svg>
             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">{cartCount}</span>
           </button>
@@ -262,7 +278,7 @@ const NavBar = () => {
           {/* Profile Dropdown or Auth Buttons */}
           {user ? (
             <div className="relative" ref={profileRef}>
-              <button 
+              <button
                 onClick={() => setProfileOpen(!isProfileOpen)}
                 className="flex items-center justify-center rounded-lg h-10 w-10 bg-transparent text-gray-900 hover:bg-blue-50 hover:text-blue-600 transition-colors"
               >
@@ -271,13 +287,12 @@ const NavBar = () => {
                 </svg>
                 <svg className="ml-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </button>
+                </svg>
+              </button>
 
               {/* Profile Dropdown Menu */}
-              <div className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 transition-all duration-200 ${
-                isProfileOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'
-              }`}>
+              <div className={`absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 transition-all duration-200 ${isProfileOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'
+                }`}>
                 <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
                   <p className="font-semibold">{user.name}</p>
                   <p className="text-gray-500 truncate" title={user.email}>
@@ -287,13 +302,13 @@ const NavBar = () => {
                 <Link to="/my-orders" onClick={() => setProfileOpen(false)} className="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">
                   My Orders
                 </Link>
-                <button 
+                <button
                   onClick={handleLogout}
                   className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                 >
                   Logout
-      </button>
-    </div>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
@@ -304,7 +319,7 @@ const NavBar = () => {
         </div>
 
         {/* Mobile Burger Menu */}
-        <button 
+        <button
           aria-label="Menu"
           onClick={() => setSidebarOpen(true)}
           className="md:hidden flex items-center justify-center rounded-lg h-10 w-10 bg-transparent text-gray-900 hover:bg-blue-50 hover:text-blue-600 transition-colors"
@@ -313,28 +328,27 @@ const NavBar = () => {
             <path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128ZM40,88H216a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16ZM216,184H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"></path>
           </svg>
         </button>
-  </header>
-
-      {/* Mobile Sidebar Overlay */}
-      <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 md:hidden ${
-        isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-      }`}>
+      </header>
+      
+      {/* Mobile Sidebar, etc. */}
+      {/* ... (The rest of the component remains unchanged) ... */}
+      <div className={`fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity duration-300 md:hidden ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}>
         {/* Sidebar */}
-        <div 
+        <div
           ref={sidebarRef}
-          className={`fixed right-0 top-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${
-            isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
+          className={`fixed right-0 top-0 h-full w-80 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
         >
           {/* Sidebar Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <a href="https://voltx-store.com" className="flex items-end gap-1 text-gray-900" target="_blank" rel="noopener noreferrer">
+              <a href="https://voltx-store.com" className="flex items-end gap-1 text-gray-900"  rel="noopener noreferrer">
                 <img src={logo} alt="logo" className="h-10 w-10 text-blue-600" />
                 <h2 className="text-xl font-semibold lowercase bg-gradient-to-b from-[#014981] to-[#019aca] text-transparent bg-clip-text" style={{ WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>voltx</h2>
               </a>
             </div>
-            <button 
+            <button
               onClick={() => setSidebarOpen(false)}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -369,7 +383,7 @@ const NavBar = () => {
 
               {/* Cart */}
               <button
-                onClick={() => navigate('/cart')}
+                onClick={() => { navigate('/cart'); handleLinkClick(); }}
                 className="flex items-center px-4 py-3 text-gray-900 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors font-medium w-full"
               >
                 <svg className="mr-3 h-5 w-5" fill="currentColor" viewBox="0 0 256 256">
@@ -381,7 +395,7 @@ const NavBar = () => {
 
               {/* Wishlist */}
               <button
-                onClick={() => navigate('/wishlist')}
+                onClick={() => { navigate('/wishlist'); handleLinkClick(); }}
                 className="flex items-center px-4 py-3 text-gray-900 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors font-medium w-full"
               >
                 <svg className="mr-3 h-5 w-5" fill="currentColor" viewBox="0 0 256 256">
@@ -392,7 +406,7 @@ const NavBar = () => {
               </button>
             </nav>
 
-            {/* Auth Buttons - Moved after navigation links */}
+            {/* Auth Buttons */}
             <div className="px-6 py-4 border-t border-gray-200 space-y-3">
               {user ? (
                 <div className="space-y-3">
@@ -402,7 +416,7 @@ const NavBar = () => {
                       {user.email.length > 20 ? `${user.email.substring(0, 20)}...` : user.email}
                     </p>
                   </div>
-                  <button 
+                  <button
                     onClick={handleLogout}
                     className="block w-full text-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
                   >
@@ -421,13 +435,13 @@ const NavBar = () => {
               )}
             </div>
 
-            {/* Spacer to push auth buttons away from bottom */}
+            {/* Spacer */}
             <div className="flex-1"></div>
           </div>
         </div>
       </div>
     </>
-);
+  );
 };
 
-export default NavBar; 
+export default NavBar;

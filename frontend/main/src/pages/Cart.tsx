@@ -1,4 +1,4 @@
-import  { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import NavBar from '../components/NavBar';
 import Footer from '../components/Footer';
 import { useCartWishlist } from '../contexts/CartWishlistContext';
@@ -24,6 +24,222 @@ interface CartProduct {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
 const MEDIA_BASE = import.meta.env.VITE_API_MEDIA_URL || 'http://localhost:3000';
 
+interface ProductRowProps {
+  product: CartProduct;
+  quantity: number;
+  onQuantityChange: (productId: string, newQuantity: number) => void;
+  onRemove: (productId: string) => void;
+  onCommitQuantity: (productId: string) => void;
+}
+
+const ProductRow: React.FC<ProductRowProps> = ({ 
+  product, 
+  quantity, 
+  onQuantityChange, 
+  onRemove,
+  onCommitQuantity 
+}) => {
+  const price = product.is_offer && product.offer_price ? Number(product.offer_price) : Number(product.sell_price);
+  const total = price * quantity;
+
+  const handleQuantityUpdate = useCallback((change: number) => {
+    const newQty = Math.max(1, quantity + change);
+    onQuantityChange(product.product_id, newQty);
+  }, [quantity, onQuantityChange, product.product_id]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(1, Number(e.target.value));
+    onQuantityChange(product.product_id, val);
+  }, [onQuantityChange, product.product_id]);
+
+  const handleInputBlur = useCallback(() => {
+    onCommitQuantity(product.product_id);
+  }, [onCommitQuantity, product.product_id]);
+
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      onCommitQuantity(product.product_id);
+    }
+  }, [onCommitQuantity, product.product_id]);
+
+  const handleRemove = useCallback(() => {
+    onRemove(product.product_id);
+  }, [onRemove, product.product_id]);
+
+  return (
+    <tr>
+      <td className="px-8 py-6 whitespace-nowrap text-base text-gray-900">
+        <div className="flex items-center space-x-4">
+          <img
+            alt={product.name}
+            className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+            src={product.primary_media ? MEDIA_BASE + product.primary_media : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NzM4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg=='}
+          />
+          <div>
+            <div className="font-semibold text-lg">{product.name}</div>
+            {product.category_name && (
+              <div className="text-sm text-gray-500">{product.category_name}</div>
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="px-8 py-6 whitespace-nowrap text-center">
+        <div className="flex items-center justify-center gap-3">
+          <button
+            className="w-10 h-10 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-xl flex items-center justify-center transition-colors"
+            onClick={() => handleQuantityUpdate(-1)}
+          >
+            -
+          </button>
+          <input
+            type="number"
+            min={1}
+            value={quantity}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            onKeyDown={handleInputKeyDown}
+            className="w-16 text-xl font-semibold text-center border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black"
+            style={{ minWidth: 0 }}
+          />
+          <button
+            className="w-10 h-10 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-xl flex items-center justify-center transition-colors"
+            onClick={() => handleQuantityUpdate(1)}
+          >
+            +
+          </button>
+        </div>
+      </td>
+      <td className="px-8 py-6 whitespace-nowrap text-right text-base text-gray-900">
+        <div className="font-semibold">{price.toFixed(2)} EGP</div>
+        {product.is_offer && product.offer_price && (
+          <div className="text-sm text-gray-500 line-through">
+            {Number(product.sell_price).toFixed(2)} EGP
+          </div>
+        )}
+      </td>
+      <td className="px-8 py-6 whitespace-nowrap text-right font-bold text-lg text-blue-600">
+        {total.toFixed(2)} EGP
+      </td>
+      <td className="px-8 py-6 whitespace-nowrap text-right">
+        <button
+          className="text-gray-400 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-blue-50"
+          onClick={handleRemove}
+          aria-label="Remove from cart"
+        >
+          <Trash2 size={20} />
+        </button>
+      </td>
+    </tr>
+  );
+};
+
+interface ProductCardProps {
+  product: CartProduct;
+  quantity: number;
+  onQuantityChange: (productId: string, newQuantity: number) => void;
+  onRemove: (productId: string) => void;
+  onCommitQuantity: (productId: string) => void;
+}
+
+const ProductCard: React.FC<ProductCardProps> = ({ 
+  product, 
+  quantity, 
+  onQuantityChange, 
+  onRemove,
+  onCommitQuantity 
+}) => {
+  const price = product.is_offer && product.offer_price ? Number(product.offer_price) : Number(product.sell_price);
+  const total = price * quantity;
+
+  const handleQuantityUpdate = useCallback((change: number) => {
+    const newQty = Math.max(1, quantity + change);
+    onQuantityChange(product.product_id, newQty);
+  }, [quantity, onQuantityChange, product.product_id]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Math.max(1, Number(e.target.value));
+    onQuantityChange(product.product_id, val);
+  }, [onQuantityChange, product.product_id]);
+
+  const handleInputBlur = useCallback(() => {
+    onCommitQuantity(product.product_id);
+  }, [onCommitQuantity, product.product_id]);
+
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      onCommitQuantity(product.product_id);
+    }
+  }, [onCommitQuantity, product.product_id]);
+
+  const handleRemove = useCallback(() => {
+    onRemove(product.product_id);
+  }, [onRemove, product.product_id]);
+
+  return (
+    <div className="bg-gray-50 rounded-lg p-4">
+      <div className="flex items-start space-x-4">
+        <img
+          alt={product.name}
+          className="w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0"
+          src={product.primary_media ? MEDIA_BASE + product.primary_media : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NzM4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg=='}
+        />
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-lg text-gray-900 mb-1">{product.name}</div>
+          {product.category_name && (
+            <div className="text-sm text-gray-500 mb-2">{product.category_name}</div>
+          )}
+          <div className="font-semibold text-blue-600 mb-2">{price.toFixed(2)} EGP</div>
+          {product.is_offer && product.offer_price && (
+            <div className="text-sm text-gray-500 line-through mb-2">
+              {Number(product.sell_price).toFixed(2)} EGP
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-lg flex items-center justify-center transition-colors"
+                onClick={() => handleQuantityUpdate(-1)}
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min={1}
+                value={quantity}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                onKeyDown={handleInputKeyDown}
+                className="w-12 text-lg font-semibold text-center border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-black"
+                style={{ minWidth: 0 }}
+              />
+              <button
+                className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-lg flex items-center justify-center transition-colors"
+                onClick={() => handleQuantityUpdate(1)}
+              >
+                +
+              </button>
+            </div>
+            <div className="text-right">
+              <div className="font-bold text-lg text-blue-600">{total.toFixed(2)} EGP</div>
+              <button
+                className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded-full hover:bg-blue-50 mt-1"
+                onClick={handleRemove}
+                aria-label="Remove from cart"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Memoize the components to prevent unnecessary re-renders
+const MemoizedProductRow = React.memo(ProductRow);
+const MemoizedProductCard = React.memo(ProductCard);
+
 const CartPage = () => {
   const { cart, removeFromCart, updateCartQuantity } = useCartWishlist();
   const [products, setProducts] = useState<CartProduct[]>([]);
@@ -33,12 +249,93 @@ const CartPage = () => {
   const [shareableLink, setShareableLink] = useState<string>('');
   const [creatingShare, setCreatingShare] = useState(false);
 
-  // Map of productId to quantity
-  const cartMap: Record<string, number> = {};
-  cart.forEach(item => {
-    cartMap[item.productId] = item.quantity;
-  });
+  // Local state for quantities with localStorage persistence
+  const [localQuantities, setLocalQuantities] = useState<Record<string, number>>({});
+  
+  // Debounced localStorage save
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Load quantities from localStorage on mount
+  useEffect(() => {
+    const savedQuantities = localStorage.getItem('cart_quantities');
+    if (savedQuantities) {
+      try {
+        const parsed = JSON.parse(savedQuantities);
+        setLocalQuantities(parsed);
+      } catch (error) {
+        console.error('Error parsing saved quantities:', error);
+      }
+    }
+  }, []);
 
+  // Save quantities to localStorage whenever localQuantities changes
+  useEffect(() => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    saveTimeoutRef.current = setTimeout(() => {
+      localStorage.setItem('cart_quantities', JSON.stringify(localQuantities));
+    }, 500); // Debounce for 500ms
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [localQuantities]);
+
+  // Sync localQuantities with cart when cart changes
+  useEffect(() => {
+    const map: Record<string, number> = { ...localQuantities };
+    
+    cart.forEach(item => {
+      // Use saved quantity if available, otherwise use cart quantity
+      if (!(item.productId in map)) {
+        map[item.productId] = item.quantity;
+      }
+    });
+    
+    // Remove quantities for products no longer in cart
+    const cartProductIds = new Set(cart.map(item => item.productId));
+    Object.keys(map).forEach(productId => {
+      if (!cartProductIds.has(productId)) {
+        delete map[productId];
+      }
+    });
+    
+    setLocalQuantities(map);
+  }, [cart]);
+
+  // Memoized quantity change handler to prevent re-renders
+  const handleQuantityChange = useCallback((productId: string, newQuantity: number) => {
+    setLocalQuantities(prev => ({
+      ...prev,
+      [productId]: newQuantity
+    }));
+  }, []);
+
+  // Commit quantity to context (and backend)
+  const commitQuantity = useCallback((productId: string) => {
+    const local = localQuantities[productId];
+    const cartItem = cart.find(item => item.productId === productId);
+    if (cartItem && local !== cartItem.quantity) {
+      updateCartQuantity(productId, local);
+    }
+  }, [localQuantities, cart, updateCartQuantity]);
+
+  // Memoized remove handler
+  const handleRemove = useCallback((productId: string) => {
+    removeFromCart(productId);
+    // Also remove from localStorage
+    setLocalQuantities(prev => {
+      const newQuantities = { ...prev };
+      delete newQuantities[productId];
+      return newQuantities;
+    });
+  }, [removeFromCart]);
+
+  // Fetch products when cart changes
   useEffect(() => {
     const ids = cart.map(item => item.productId);
     if (ids.length === 0) {
@@ -46,8 +343,10 @@ const CartPage = () => {
       setError(null);
       return;
     }
+    
     setLoading(true);
     setError(null);
+    
     fetch(`${API_BASE}/products/by-ids`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -72,43 +371,41 @@ const CartPage = () => {
       .finally(() => setLoading(false));
   }, [cart]);
 
-  // Calculate subtotal
-  const subtotal = products.reduce((sum, product) => {
-    const qty = cartMap[product.product_id] || 0;
-    const price = product.is_offer && product.offer_price ? Number(product.offer_price) : Number(product.sell_price);
-    return sum + price * qty;
-  }, 0);
-
-  // Handle quantity update with +/- buttons
-  const handleQuantityUpdate = (productId: string, change: number) => {
-    const currentQty = cartMap[productId] || 1;
-    const newQty = Math.max(1, currentQty + change);
-    updateCartQuantity(productId, newQty);
-  };
+  // Memoized subtotal calculation
+  const subtotal = useMemo(() => {
+    return products.reduce((sum, product) => {
+      const qty = localQuantities[product.product_id] || 0;
+      const price = product.is_offer && product.offer_price ? Number(product.offer_price) : Number(product.sell_price);
+      return sum + price * qty;
+    }, 0);
+  }, [products, localQuantities]);
 
   // Handle checkout
-  const handleCheckout = () => {
+  const handleCheckout = useCallback(() => {
     // TODO: Implement checkout functionality
     toast('Checkout functionality will be implemented here');
-  };
+  }, []);
 
   // Handle share cart
-  const handleShareCart = async () => {
+  const handleShareCart = useCallback(async () => {
     if (cart.length === 0) {
       toast.error('Your cart is empty');
       return;
     }
+    
     setCreatingShare(true);
     const productsObj: Record<string, number> = {};
     cart.forEach(item => {
-      productsObj[item.productId] = item.quantity;
+      productsObj[item.productId] = localQuantities[item.productId] || item.quantity;
     });
+    
     try {
       const res = await fetch(`${API_BASE}/carts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ products: productsObj }),
       });
+      
       if (res.ok) {
         const data = await res.json();
         setShareableLink(`https://voltx-store.com/cart/${data.shareable_code}`);
@@ -121,20 +418,24 @@ const CartPage = () => {
     } finally {
       setCreatingShare(false);
     }
-  };
+  }, [cart, localQuantities]);
 
   // Copy link to clipboard
-  const copyToClipboard = () => {
+  const copyToClipboard = useCallback(() => {
     navigator.clipboard.writeText(shareableLink);
     toast.success('Link copied to clipboard!');
-  };
+  }, [shareableLink]);
 
   // Share to WhatsApp
-  const shareToWhatsApp = () => {
+  const shareToWhatsApp = useCallback(() => {
     const text = `Check out this cart: ${shareableLink}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
-  };
+  }, [shareableLink]);
+
+  const handleContinueShopping = useCallback(() => {
+    window.location.href = '/shop';
+  }, []);
 
   return (
     <>
@@ -167,126 +468,32 @@ const CartPage = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {products.map(product => {
-                          const qty = cartMap[product.product_id] || 0;
-                          const price = product.is_offer && product.offer_price ? Number(product.offer_price) : Number(product.sell_price);
-                          return (
-                            <tr key={product.product_id}>
-                              <td className="px-8 py-6 whitespace-nowrap text-base text-gray-900">
-                                <div className="flex items-center space-x-4">
-                                  <img
-                                    alt={product.name}
-                                    className="w-16 h-16 rounded-lg object-cover border border-gray-200"
-                                    src={product.primary_media ? MEDIA_BASE + product.primary_media : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NzM4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg=='}
-                                  />
-                                  <div>
-                                    <div className="font-semibold text-lg">{product.name}</div>
-                                    {product.category_name && (
-                                      <div className="text-sm text-gray-500">{product.category_name}</div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-8 py-6 whitespace-nowrap text-center">
-                                <div className="flex items-center justify-center gap-3">
-                                  <button
-                                    className="w-10 h-10 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-xl flex items-center justify-center transition-colors"
-                                    onClick={() => handleQuantityUpdate(product.product_id, -1)}
-                                  >
-                                    -
-                                  </button>
-                                  <span className="text-xl font-semibold min-w-[3rem] text-center text-black">{qty}</span>
-                                  <button
-                                    className="w-10 h-10 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-xl flex items-center justify-center transition-colors"
-                                    onClick={() => handleQuantityUpdate(product.product_id, 1)}
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="px-8 py-6 whitespace-nowrap text-right text-base text-gray-900">
-                                <div className="font-semibold">{price.toFixed(2)} EGP</div>
-                                {product.is_offer && product.offer_price && (
-                                  <div className="text-sm text-gray-500 line-through">
-                                    {Number(product.sell_price).toFixed(2)} EGP
-                                  </div>
-                                )}
-                              </td>
-                              <td className="px-8 py-6 whitespace-nowrap text-right font-bold text-lg text-blue-600">
-                                {(price * qty).toFixed(2)} EGP
-                              </td>
-                              <td className="px-8 py-6 whitespace-nowrap text-right">
-                                <button
-                                  className="text-gray-400 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-blue-50"
-                                  onClick={() => removeFromCart(product.product_id)}
-                                  aria-label="Remove from cart"
-                                >
-                                  <Trash2 size={20} />
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {products.map(product => (
+                          <MemoizedProductRow
+                            key={product.product_id}
+                            product={product}
+                            quantity={localQuantities[product.product_id] || 1}
+                            onQuantityChange={handleQuantityChange}
+                            onRemove={handleRemove}
+                            onCommitQuantity={commitQuantity}
+                          />
+                        ))}
                       </tbody>
                     </table>
                   </div>
 
                   {/* Mobile Card View */}
                   <div className="md:hidden space-y-4">
-                    {products.map(product => {
-                      const qty = cartMap[product.product_id] || 0;
-                      const price = product.is_offer && product.offer_price ? Number(product.offer_price) : Number(product.sell_price);
-                      return (
-                        <div key={product.product_id} className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex items-start space-x-4">
-                            <img
-                              alt={product.name}
-                              className="w-20 h-20 rounded-lg object-cover border border-gray-200 flex-shrink-0"
-                              src={product.primary_media ? MEDIA_BASE + product.primary_media : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzY2NzM4NyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlPC90ZXh0Pjwvc3ZnPg=='}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-lg text-gray-900 mb-1">{product.name}</div>
-                              {product.category_name && (
-                                <div className="text-sm text-gray-500 mb-2">{product.category_name}</div>
-                              )}
-                              <div className="font-semibold text-blue-600 mb-2">{price.toFixed(2)} EGP</div>
-                              {product.is_offer && product.offer_price && (
-                                <div className="text-sm text-gray-500 line-through mb-2">
-                                  {Number(product.sell_price).toFixed(2)} EGP
-                                </div>
-                              )}
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <button
-                                    className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-lg flex items-center justify-center transition-colors"
-                                    onClick={() => handleQuantityUpdate(product.product_id, -1)}
-                                  >
-                                    -
-                                  </button>
-                                  <span className="text-lg font-semibold min-w-[2rem] text-center text-black">{qty}</span>
-                                  <button
-                                    className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-lg flex items-center justify-center transition-colors"
-                                    onClick={() => handleQuantityUpdate(product.product_id, 1)}
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-lg text-blue-600">{(price * qty).toFixed(2)} EGP</div>
-                                  <button
-                                    className="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded-full hover:bg-blue-50 mt-1"
-                                    onClick={() => removeFromCart(product.product_id)}
-                                    aria-label="Remove from cart"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    {products.map(product => (
+                      <MemoizedProductCard
+                        key={product.product_id}
+                        product={product}
+                        quantity={localQuantities[product.product_id] || 1}
+                        onQuantityChange={handleQuantityChange}
+                        onRemove={handleRemove}
+                        onCommitQuantity={commitQuantity}
+                      />
+                    ))}
                   </div>
                 </>
               )}
@@ -316,7 +523,7 @@ const CartPage = () => {
                 </div>
                 <button
                   className="px-8 py-4 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-semibold text-lg transition-colors w-full sm:w-auto"
-                  onClick={() => window.location.href = '/shop'}
+                  onClick={handleContinueShopping}
                 >
                   Continue Shopping
                 </button>
@@ -381,4 +588,4 @@ const CartPage = () => {
   );
 };
 
-export default CartPage; 
+export default CartPage;
