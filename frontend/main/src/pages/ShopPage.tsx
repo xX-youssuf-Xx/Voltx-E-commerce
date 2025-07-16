@@ -115,7 +115,7 @@ const ShopPage: React.FC = () => {
       .then((data: ShopProductsResponse) => {
         setProducts(data.products || []);
         setPagination(data.pagination || null);
-        
+        console.log("data" + JSON.stringify(data.pagination))
         // Fetch wishlist status for products
         if (data.products && data.products.length > 0) {
           // fetchWishlistStatus(data.products.map(p => Number(p.product_id))); // Removed backend call
@@ -377,27 +377,7 @@ const ShopPage: React.FC = () => {
     </ul>
   );
 
-  // Pagination
-  const renderPagination = () => {
-    if (!pagination) return null;
-    const { page, totalPages } = pagination;
-    if (totalPages <= 1) return null;
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) pages.push(i);
-    return (
-      <div className="flex justify-center mt-8 gap-2">
-        {pages.map(p => (
-          <button
-            key={p}
-            className={`px-3 py-1 rounded ${p === page ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-blue-100'}`}
-            onClick={() => setPage(p)}
-          >
-            {p}
-          </button>
-        ))}
-      </div>
-    );
-  };
+ 
 
   // Filter Sidebar for Mobile
   const FilterSidebar = () => (
@@ -652,7 +632,7 @@ const ShopPage: React.FC = () => {
             <div className="flex space-x-2">
               <button
                 onClick={() => setPage(pagination.page - 1)}
-                disabled={pagination.page <= 1}
+                disabled={!pagination.hasPrev}
                 className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 Previous
@@ -662,7 +642,7 @@ const ShopPage: React.FC = () => {
               </span>
               <button
                 onClick={() => setPage(pagination.page + 1)}
-                disabled={pagination.page >= pagination.totalPages}
+                disabled={!pagination.hasNext}
                 className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
               >
                 Next
