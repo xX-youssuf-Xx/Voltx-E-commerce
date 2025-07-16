@@ -622,35 +622,34 @@ const ShopPage: React.FC = () => {
             </div>
           )}
         </div>
+        {!loading && products && products.length > 0 && (
+          pagination && pagination.totalPages > 1 && (
+            <div className="flex justify-center mt-8">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(pagination.page - 1)}
+                  disabled={!pagination.hasPrev}
+                  className={`flex items-center px-3 py-1 rounded text-sm border transition-colors
+                    ${pagination.hasPrev ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                >
+                  <span className="mr-1">&#8592;</span> Previous
+                </button>
+                <span className="px-3 py-1 text-sm text-gray-700">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(pagination.page + 1)}
+                  disabled={!pagination.hasNext}
+                  className={`flex items-center px-3 py-1 rounded text-sm border transition-colors
+                    ${pagination.hasNext ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
+                >
+                  Next <span className="ml-1">&#8594;</span>
+                </button>
+              </div>
+            </div>
+          )
+        )}
       </div>
-      {pagination && pagination.totalPages > 1 && (
-        <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 mt-8">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-700">
-              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => setPage(pagination.page - 1)}
-                disabled={!pagination.hasPrev}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Previous
-              </button>
-              <span className="px-3 py-1 text-sm text-gray-700">
-                Page {pagination.page} of {pagination.totalPages}
-              </span>
-              <button
-                onClick={() => setPage(pagination.page + 1)}
-                disabled={!pagination.hasNext}
-                className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <Footer />
     </div>
   );
