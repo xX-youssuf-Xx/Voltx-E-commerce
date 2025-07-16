@@ -669,30 +669,8 @@ export async function getShopProducts(params: ShopParams) {
     sort_order = 'DESC'
   } = params;
 
-  let sql = `SELECT 
-    p.product_id,
-    p.name,
-    p.slug,
-    p.sku,
-    p.short_description,
-    p.sell_price,
-    p.offer_price,
-    p.is_offer,
-    p.status,
-    p.stock_quantity,
-    p.is_custom_status,
-    p.custom_status,
-    p.custom_status_color,
-    p.created_at,
-    b.name as brand_name,
-    c.name as category_name,
-    m.image_url as primary_media
-  FROM products p
-  LEFT JOIN brands b ON p.brand_id = b.brand_id
-  LEFT JOIN categories c ON p.category_id = c.category_id
-  LEFT JOIN media m ON p.primary_media_id = m.media_id
-  WHERE p.status IN ('on_sale', 'out_of_stock', 'custom')`;
-
+  // Build WHERE clause and params ONCE
+  let where = "WHERE p.status IN ('on_sale', 'out_of_stock', 'custom')";
   const queryParams: any[] = [];
   let paramCount = 0;
 
@@ -700,60 +678,90 @@ export async function getShopProducts(params: ShopParams) {
   if (search) {
     paramCount++;
     queryParams.push(`%${search}%`);
-    sql += ` AND (p.name ILIKE $${paramCount} OR p.sku ILIKE $${paramCount} OR p.short_description ILIKE $${paramCount})`;
+    where += ` AND (p.name ILIKE $${paramCount} OR p.sku ILIKE $${paramCount} OR p.short_description ILIKE $${paramCount})`;
   }
 
   // Add multiple categories filter
   if (category_ids && category_ids.length > 0) {
     const placeholders = category_ids.map(() => `$${++paramCount}`).join(',');
     queryParams.push(...category_ids);
-    sql += ` AND p.category_id IN (${placeholders})`;
+    where += ` AND p.category_id IN (${placeholders})`;
   }
 
   // Add brand filter
   if (brand_id) {
     paramCount++;
     queryParams.push(brand_id);
-    sql += ` AND p.brand_id = $${paramCount}`;
+    where += ` AND p.brand_id = $${paramCount}`;
   }
 
   // Add price range filter
   if (price_min !== undefined) {
     paramCount++;
     queryParams.push(price_min);
-    sql += ` AND p.sell_price >= $${paramCount}`;
+    where += ` AND p.sell_price >= $${paramCount}`;
   }
 
   if (price_max !== undefined) {
     paramCount++;
     queryParams.push(price_max);
-    sql += ` AND p.sell_price <= $${paramCount}`;
+    where += ` AND p.sell_price <= $${paramCount}`;
   }
 
-  // Get total count for pagination
-  const countSql = sql.replace(/SELECT.*FROM/, 'SELECT COUNT(*) as total FROM');
-  const countResult = await db.query(countSql, queryParams);
-  const totalCount = parseInt(countResult.rows[0].total) || 0;
-  const totalPages = Math.ceil(totalCount / limit) || 1;
-  // Add sorting
+  // Sorting
   const validSortFields = ['name', 'sell_price', 'created_at', 'stock_quantity'];
   const validSortOrders = ['ASC', 'DESC'];
-  
   const finalSortBy = validSortFields.includes(sort_by) ? sort_by : 'created_at';
   const finalSortOrder = validSortOrders.includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
-  
-  sql += ` ORDER BY p.${finalSortBy} ${finalSortOrder}`;
 
-  // Add pagination
-  const offset = (page - 1) * limit;
-  paramCount++;
-  queryParams.push(limit);
-  paramCount++;
-  queryParams.push(offset);
-  sql += ` LIMIT $${paramCount - 1} OFFSET $${paramCount}`;
+  // Main query
+  let sql = `
+    SELECT 
+      p.product_id,
+      p.name,
+      p.slug,
+      p.sku,
+      p.short_description,
+      p.sell_price,
+      p.offer_price,
+      p.is_offer,
+      p.status,
+      p.stock_quantity,
+      p.is_custom_status,
+      p.custom_status,
+      p.custom_status_color,
+      p.created_at,
+      b.name as brand_name,
+      c.name as category_name,
+      m.image_url as primary_media
+    FROM products p
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    LEFT JOIN media m ON p.primary_media_id = m.media_id
+    ${where}
+    ORDER BY p.${finalSortBy} ${finalSortOrder}
+    LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+  `;
+  // For LIMIT/OFFSET
+  const mainQueryParams = [...queryParams, limit, (page - 1) * limit];
 
-  const result = await db.query(sql, queryParams);
-  
+  // Count query
+  let countSql = `
+    SELECT COUNT(*) as total
+    FROM products p
+    LEFT JOIN brands b ON p.brand_id = b.brand_id
+    LEFT JOIN categories c ON p.category_id = c.category_id
+    ${where}
+  `;
+
+  const [result, countResult] = await Promise.all([
+    db.query(sql, mainQueryParams),
+    db.query(countSql, queryParams)
+  ]);
+
+  const totalCount = parseInt(countResult.rows[0].total) || 0;
+  const totalPages = Math.ceil(totalCount / limit) || 1;
+
   return {
     products: result.rows,
     pagination: {
