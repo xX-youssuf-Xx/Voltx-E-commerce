@@ -733,8 +733,8 @@ export async function getShopProducts(params: ShopParams) {
   // Get total count for pagination
   const countSql = sql.replace(/SELECT.*FROM/, 'SELECT COUNT(*) as total FROM');
   const countResult = await db.query(countSql, queryParams);
-  const totalCount = parseInt(countResult.rows[0].total);
-
+  const totalCount = parseInt(countResult.rows[0].total) || 0;
+  const totalPages = Math.ceil(totalCount / limit) || 1;
   // Add sorting
   const validSortFields = ['name', 'sell_price', 'created_at', 'stock_quantity'];
   const validSortOrders = ['ASC', 'DESC'];
@@ -760,8 +760,8 @@ export async function getShopProducts(params: ShopParams) {
       page,
       limit,
       total: totalCount,
-      totalPages: Math.ceil(totalCount / limit),
-      hasNext: page < Math.ceil(totalCount / limit),
+      totalPages,
+      hasNext: page < totalPages,
       hasPrev: page > 1
     }
   };

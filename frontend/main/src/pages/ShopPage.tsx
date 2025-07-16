@@ -105,7 +105,7 @@ const ShopPage: React.FC = () => {
       params.append('sort_order', 'DESC');
     }
     
-    fetch(`${API_BASE}/products/shop?${params.toString()}`)
+    fetch(`${API_BASE}/products/shop?${params.toString()}` )
       .then(res => {
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
