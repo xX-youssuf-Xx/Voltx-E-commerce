@@ -5,6 +5,7 @@ import { authorize } from "../middlewares/roleMiddleware";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import * as orderController from '../controllers/orderController';
 
 // Always use dist/uploads for uploads
 const uploadDir = path.join(process.cwd(), "dist", "uploads");
@@ -51,5 +52,10 @@ router.get("/:id/docs", listProductDocs);
 router.post("/:id/docs", authenticate, authorize("products", "update"), upload.single("file"), addProductDoc);
 router.delete("/:id/docs/:docId", authenticate, authorize("products", "update"), deleteProductDoc);
 router.put("/:id/docs/:docId", authenticate, authorize("products", "update"), upload.single("file"), updateProductDoc);
+
+router.post('/checkout', orderController.createOrder);
+router.post('/validate-coupon', orderController.validateCoupon);
+router.get('/orders', authenticate, orderController.listOrders);
+router.get('/receipts/:id', authenticate, orderController.getReceipt);
 
 export default router; 

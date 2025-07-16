@@ -408,3 +408,41 @@ EXECUTE PROCEDURE trigger_set_timestamp();
 -- =============================================================================
 -- End of Schema
 -- =============================================================================
+
+-- =============================================================================
+-- SECTION X: ORDERS & RECEIPTS (CUSTOM)
+-- =============================================================================
+
+-- Orders Table (custom for both customer and cashier)
+CREATE TABLE orders_custom (
+    order_id BIGSERIAL PRIMARY KEY,
+    receipt_id BIGINT,
+    customer_id BIGINT,
+    cashier_id BIGINT,
+    order_type VARCHAR(20) NOT NULL CHECK (order_type IN ('customer', 'cashier')),
+    products JSONB NOT NULL DEFAULT '{}', -- {product_id: quantity}
+    price NUMERIC(10, 2) NOT NULL,
+    discount NUMERIC(10, 2),
+    discount_code VARCHAR(50),
+    is_shipping BOOLEAN NOT NULL DEFAULT FALSE,
+    shipping_location TEXT,
+    total_price NUMERIC(10, 2) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE SET NULL,
+    FOREIGN KEY (cashier_id) REFERENCES users(user_id) ON DELETE SET NULL
+    -- receipt_id will be linked after receipts table
+);
+
+-- Receipts Table
+CREATE TABLE receipts (
+    receipt_id BIGSERIAL PRIMARY KEY,
+    order_id BIGINT NOT NULL,
+    payment_method VARCHAR(50) NOT NULL,
+    price_paid NUMERIC(10, 2) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (order_id) REFERENCES orders_custom(order_id) ON DELETE CASCADE
+);
+
+-- Add the foreign key for receipt_id in orders_custom now that receipts exists
+ALTER TABLE orders_custom ADD CONSTRAINT fk_receipt_id FOREIGN KEY (receipt_id) REFERENCES receipts(receipt_id) ON DELETE SET NULL;

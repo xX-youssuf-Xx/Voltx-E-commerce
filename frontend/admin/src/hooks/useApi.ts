@@ -1,6 +1,10 @@
 import { useAuth } from '../contexts/AuthContext'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
+// Always use /api/products as base for products/orders endpoints
+let API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+if (API_BASE_URL && !API_BASE_URL.endsWith('/products')) {
+  API_BASE_URL = API_BASE_URL.replace(/\/$/, '') + '/products';
+}
 
 export const useApi = () => {
   const { token, logout } = useAuth()

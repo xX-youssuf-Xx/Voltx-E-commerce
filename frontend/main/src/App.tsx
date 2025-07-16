@@ -16,6 +16,7 @@ import LinktreePage from './pages/LinktreePage';
 import ViewProductPage from './pages/viewProductPage';
 import CartPage from './pages/Cart';
 import SharedCartPage from './pages/SharedCartPage';
+import CheckoutPage from './pages/Checkout';
 
 function App() {
   return (
@@ -61,6 +62,7 @@ function App() {
             <Route path="/services" element={<Services />} />
             <Route path="/linktree" element={<LinktreePage />} />
             <Route path="/product/:slug" element={<ViewProductPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
           </Routes>
         </Router>
       </CartWishlistProvider>

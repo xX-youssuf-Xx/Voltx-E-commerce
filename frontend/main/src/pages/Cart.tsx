@@ -4,6 +4,7 @@ import Footer from '../components/Footer';
 import { useCartWishlist } from '../contexts/CartWishlistContext';
 import { Trash2, Share2, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 
 interface CartProduct {
   product_id: string;
@@ -248,6 +249,7 @@ const CartPage = () => {
   const [showSharePopup, setShowSharePopup] = useState(false);
   const [shareableLink, setShareableLink] = useState<string>('');
   const [creatingShare, setCreatingShare] = useState(false);
+  const navigate = useNavigate();
 
   // Local state for quantities with localStorage persistence
   const [localQuantities, setLocalQuantities] = useState<Record<string, number>>({});
@@ -380,11 +382,10 @@ const CartPage = () => {
     }, 0);
   }, [products, localQuantities]);
 
-  // Handle checkout
+  // Replace handleCheckout to navigate to /checkout
   const handleCheckout = useCallback(() => {
-    // TODO: Implement checkout functionality
-    toast('Checkout functionality will be implemented here');
-  }, []);
+    navigate('/checkout');
+  }, [navigate]);
 
   // Handle share cart
   const handleShareCart = useCallback(async () => {
