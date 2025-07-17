@@ -128,10 +128,21 @@ const CheckoutPage: React.FC = () => {
         payment_method: 'unpaid',
         price_paid: 0
       };
-      const res: any = await api.post('/products/checkout', payload);
+      const res = await fetch(`${API_BASE}/products/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.status === 201) {
+        toast.success('Order placed successfully!');
+        clearCart();
+        navigate('/shop');
+        return;
+      }
+      const data = await res.json();
       let order = null;
-      if (res?.order) order = res.order;
-      else if (res?.data?.order) order = res.data.order;
+      if (data?.order) order = data.order;
+      else if (data?.data?.order) order = data.data.order;
       if (order && order.order_id) {
         setSuccess('Order placed successfully! Discount applied: ' + (order?.discount || 0));
         clearCart();

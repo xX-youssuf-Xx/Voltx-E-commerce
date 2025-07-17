@@ -33,6 +33,16 @@ router.get("/paginated", getPaginatedProducts); // paginated list
 router.get("/shop", getShopProducts); // shop products with filtering, sorting, pagination
 router.get("/generate-sku", generateSKU); // generate unique SKU
 router.get("/search", fuzzySearchProducts);
+
+// --- FIX: Place orders/receipts routes BEFORE any :id routes ---
+router.get('/orders', authenticate, orderController.listOrders);
+router.get('/receipts/:id', authenticate, orderController.getReceipt);
+router.put('/orders/:id', authenticate, orderController.updateOrder);
+router.put('/receipts/:id', authenticate, orderController.updateReceipt);
+router.delete('/orders/:id', authenticate, orderController.deleteOrder);
+router.delete('/receipts/:id', authenticate, orderController.deleteReceipt);
+// -------------------------------------------------------------
+
 router.get("/:id", getProductById); // details
 router.get("/:id/short", getProductShortInfo); // short info
 router.get("/slug/:slug", getProductBySlug);
@@ -55,7 +65,5 @@ router.put("/:id/docs/:docId", authenticate, authorize("products", "update"), up
 
 router.post('/checkout', orderController.createOrder);
 router.post('/validate-coupon', orderController.validateCoupon);
-router.get('/orders', authenticate, orderController.listOrders);
-router.get('/receipts/:id', authenticate, orderController.getReceipt);
 
 export default router; 

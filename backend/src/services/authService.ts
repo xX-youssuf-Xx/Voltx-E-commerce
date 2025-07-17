@@ -46,4 +46,9 @@ export async function login(email: string, pass: string) {
     { expiresIn: "7d" }
   );
   return { token, user: { user_id: user.user_id, name: user.name, email: user.email, role_id: user.role_id } };
+}
+
+export async function getUserById(id: number) {
+  const result = await client.query("SELECT user_id, name, email, role_id FROM users WHERE user_id = $1", [id]);
+  return result.rows[0] || null;
 } 

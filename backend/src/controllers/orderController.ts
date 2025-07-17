@@ -5,6 +5,7 @@ import { db } from '../config/database';
 
 export async function createOrder(req: Request, res: Response) {
   try {
+
     const orderData = req.body;
     // Validate required fields (products, total_price, order_type, etc.)
     if (!orderData.products || !orderData.total_price || !orderData.order_type) {
@@ -53,6 +54,61 @@ export async function getReceipt(req: Request, res: Response) {
       return res.status(404).json({ error: 'Receipt not found' });
     }
     return res.json(result.rows[0]);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function updateOrder(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const { shipping_location } = req.body;
+    const result = await db.query(
+      'UPDATE orders_custom SET shipping_location = $1, updated_at = NOW() WHERE order_id = $2 RETURNING *',
+      [shipping_location, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    return res.json(result.rows[0]);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function updateReceipt(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const { price_paid, payment_method } = req.body;
+    const result = await db.query(
+      'UPDATE receipts SET price_paid = $1, payment_method = $2 WHERE receipt_id = $3 RETURNING *',
+      [price_paid, payment_method, id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Receipt not found' });
+    return res.json(result.rows[0]);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteOrder(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    // Delete receipt first (if exists)
+    await db.query('DELETE FROM receipts WHERE order_id = $1', [id]);
+    // Delete order
+    const result = await db.query('DELETE FROM orders_custom WHERE order_id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Order not found' });
+    return res.json({ success: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+}
+
+export async function deleteReceipt(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const result = await db.query('DELETE FROM receipts WHERE receipt_id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Receipt not found' });
+    return res.json({ success: true });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

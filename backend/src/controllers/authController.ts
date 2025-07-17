@@ -56,4 +56,15 @@ export async function me(req: AuthRequest, res: Response) {
   } catch (err: any) {
     return res.status(401).json({ error: "Invalid token" });
   }
+}
+
+export async function getUserById(req: Request, res: Response) {
+  try {
+    const id = Number(req.params.id);
+    const result = await authService.getUserById(id);
+    if (!result) return res.status(404).json({ error: 'User not found' });
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
 } 
