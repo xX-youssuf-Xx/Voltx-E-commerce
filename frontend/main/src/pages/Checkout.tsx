@@ -37,6 +37,17 @@ const CheckoutPage: React.FC = () => {
   const [discount, setDiscount] = useState(0);
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [phone, setPhone] = useState('');
+  const [notes, setNotes] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [governorate, setGovernorate] = useState('');
+  const governorates = [
+    '', 'Cairo', 'Giza', 'Alexandria', 'Dakahlia', 'Red Sea', 'Beheira', 'Fayoum', 'Gharbiya', 'Ismailia',
+    'Menofia', 'Minya', 'Qaliubiya', 'New Valley', 'Suez', 'Aswan', 'Assiut', 'Beni Suef', 'Port Said',
+    'Damietta', 'Sharkia', 'South Sinai', 'Kafr Al sheikh', 'Matrouh', 'Luxor', 'Qena', 'North Sinai', 'Sohag'
+  ];
+  const [shippingFee, setShippingFee] = useState(0);
 
   // Fetch product details for cart items
   useEffect(() => {
@@ -98,7 +109,12 @@ const CheckoutPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [coupon, cart, subtotal]);
 
-  const total = subtotal - discount;
+  useEffect(() => {
+    if (governorate) setShippingFee(50);
+    else setShippingFee(0);
+  }, [governorate]);
+
+  const total = subtotal - discount + shippingFee;
 
   // Only clear cart if backend confirms order (success and order/order_id present)
   const handleCheckout = async () => {
@@ -115,12 +131,19 @@ const CheckoutPage: React.FC = () => {
         obj[item.productId] = item.quantity;
         return obj;
       }, {} as Record<string, number>);
+      // Combine governorate, address, phone, notes into one string
+      let addressParts = [];
+      if (governorate) addressParts.push(governorate);
+      if (shippingLocation) addressParts.push(shippingLocation);
+      if (phone) addressParts.push(phone);
+      if (notes) addressParts.push(notes);
+      const combinedAddress = addressParts.join(', ');
       const payload = {
         products: productsObj,
         price: subtotal,
         discount_code: coupon || null,
         is_shipping: isShipping,
-        shipping_location: isShipping ? shippingLocation : null,
+        shipping_location: isShipping ? combinedAddress : null,
         total_price: total,
         order_type: user && user.role_id === 3 ? 'cashier' : 'customer',
         customer_id: user ? user.user_id : null,
@@ -133,18 +156,19 @@ const CheckoutPage: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (res.status === 201) {
-        toast.success('Order placed successfully!');
-        clearCart();
-        navigate('/shop');
-        return;
-      }
       const data = await res.json();
       let order = null;
       if (data?.order) order = data.order;
       else if (data?.data?.order) order = data.data.order;
+      if (res.status === 201 && order && order.order_id) {
+        setOrderId(order.order_id);
+        setShowSuccessModal(true);
+        clearCart();
+        return;
+      }
       if (order && order.order_id) {
-        setSuccess('Order placed successfully! Discount applied: ' + (order?.discount || 0));
+        setOrderId(order.order_id);
+        setShowSuccessModal(true);
         clearCart();
       } else {
         setError('Order could not be confirmed. Please try again.');
@@ -190,13 +214,13 @@ const CheckoutPage: React.FC = () => {
   return (
     <>
       <NavBar />
-      <main className="px-4 sm:px-10 lg:px-20 xl:px-40 flex flex-1 justify-center py-8 bg-[#f8f9fa] min-h-screen" style={{ fontFamily: 'Plus Jakarta Sans, Noto Sans, sans-serif' }}>
+      <main className="px-2 sm:px-4 md:px-8 lg:px-20 xl:px-40 flex flex-1 justify-center py-8 bg-[#f8f9fa] min-h-screen" style={{ fontFamily: 'Plus Jakarta Sans, Noto Sans, sans-serif' }}>
         <div className="flex flex-col max-w-6xl w-full flex-1">
           <div className="flex flex-wrap justify-between items-center gap-4 p-6 mb-8">
             <h2 className="text-blue-600 text-4xl font-bold leading-tight tracking-tight">Checkout</h2>
           </div>
           <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
-            <div className="px-6 py-6">
+            <div className="px-4 sm:px-6 py-6">
               {cart.length === 0 ? (
                 <div className="flex justify-center items-center h-40 text-lg text-gray-400">Your cart is empty.</div>
               ) : loading ? (
@@ -209,8 +233,8 @@ const CheckoutPage: React.FC = () => {
                       const cartItem = cart.find(item => item.productId === product.product_id);
                       if (!cartItem) return null;
                       return (
-                        <div key={product.product_id} className="flex items-center justify-between border-b py-4">
-                          <div className="flex items-center gap-4">
+                        <div key={product.product_id} className="flex flex-col sm:flex-row items-center justify-between border-b py-4 gap-4">
+                          <div className="flex items-center gap-4 w-full sm:w-auto">
                             <img
                               alt={product.name}
                               className="w-16 h-16 rounded-lg object-cover border border-gray-200"
@@ -223,7 +247,7 @@ const CheckoutPage: React.FC = () => {
                               <div className="text-xs text-gray-500">Qty: {cartItem.quantity}</div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                             <button onClick={() => updateCartQuantity(product.product_id, cartItem.quantity - 1)} disabled={cartItem.quantity <= 1} className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-lg flex items-center justify-center transition-colors">-</button>
                             <input
                               type="number"
@@ -236,7 +260,7 @@ const CheckoutPage: React.FC = () => {
                             <button onClick={() => updateCartQuantity(product.product_id, cartItem.quantity + 1)} className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 font-bold text-lg flex items-center justify-center transition-colors">+</button>
                             <button onClick={() => removeFromCart(product.product_id)} className="text-red-500 ml-2">Remove</button>
                           </div>
-                          <div className="font-semibold text-blue-600 text-lg">
+                          <div className="font-semibold text-blue-600 text-lg w-full sm:w-auto text-right">
                             {((product.is_offer && product.offer_price ? Number(product.offer_price) : Number(product.sell_price)) * cartItem.quantity).toFixed(2)} EGP
                           </div>
                         </div>
@@ -255,13 +279,39 @@ const CheckoutPage: React.FC = () => {
                       </label>
                     </div>
                     {isShipping && (
-                      <input
-                        type="text"
-                        className="w-full border rounded px-2 py-1 bg-white text-black"
-                        placeholder="Enter shipping location"
-                        value={shippingLocation}
-                        onChange={e => setShippingLocation(e.target.value)}
-                      />
+                      <>
+                        <label className="block font-medium mb-1 text-black">Governorate</label>
+                        <select
+                          className="w-full border rounded px-2 py-1 bg-white text-black mb-2"
+                          value={governorate}
+                          onChange={e => setGovernorate(e.target.value)}
+                        >
+                          {governorates.map(gov => (
+                            <option key={gov} value={gov}>{gov ? gov : 'Select governorate'}</option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-1 bg-white text-black mb-2"
+                          placeholder="Enter shipping location"
+                          value={shippingLocation}
+                          onChange={e => setShippingLocation(e.target.value)}
+                        />
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-1 bg-white text-black mb-2"
+                          placeholder="Phone number"
+                          value={phone}
+                          onChange={e => setPhone(e.target.value)}
+                        />
+                        <textarea
+                          className="w-full border rounded px-2 py-1 bg-white text-black mb-2"
+                          placeholder="Notes (optional)"
+                          value={notes}
+                          onChange={e => setNotes(e.target.value)}
+                          rows={2}
+                        />
+                      </>
                     )}
                   </div>
                   {/* Coupon */}
@@ -303,6 +353,12 @@ const CheckoutPage: React.FC = () => {
                 <span>Total</span>
                 <span>{total.toFixed(2)} EGP</span>
               </div>
+              {shippingFee > 0 && (
+                <div className="flex justify-between mb-2 text-sm text-blue-700">
+                  <span>Shipping Fee</span>
+                  <span>+{shippingFee.toFixed(2)} EGP</span>
+                </div>
+              )}
               <button
                 className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold text-lg disabled:opacity-50 hover:bg-blue-700 transition-colors"
                 onClick={handleCheckout}
@@ -317,6 +373,21 @@ const CheckoutPage: React.FC = () => {
         </div>
       </main>
       <Footer />
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-8 max-w-xs w-full flex flex-col items-center">
+            <div className="text-2xl font-bold text-green-700 mb-2">Order Placed!</div>
+            <div className="text-lg text-gray-700 mb-4">Your order has been successfully placed.</div>
+            {orderId && <div className="text-blue-700 font-semibold text-lg mb-4">Order Number: #{orderId}</div>}
+            <button
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold shadow-md transition-all duration-150"
+              onClick={() => setShowSuccessModal(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 };

@@ -41,6 +41,8 @@ router.put('/orders/:id', authenticate, orderController.updateOrder);
 router.put('/receipts/:id', authenticate, orderController.updateReceipt);
 router.delete('/orders/:id', authenticate, orderController.deleteOrder);
 router.delete('/receipts/:id', authenticate, orderController.deleteReceipt);
+// New: order details endpoint
+router.get('/orders/:id/details', authenticate, orderController.getOrderDetails);
 // -------------------------------------------------------------
 
 router.get("/:id", getProductById); // details

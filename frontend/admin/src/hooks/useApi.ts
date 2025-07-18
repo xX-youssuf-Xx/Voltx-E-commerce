@@ -1,9 +1,22 @@
 import { useAuth } from '../contexts/AuthContext'
 
-// Always use /api/products as base for products/orders endpoints
+// Use the base API URL as provided in env
 let API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
-if (API_BASE_URL && !API_BASE_URL.endsWith('/products')) {
-  API_BASE_URL = API_BASE_URL.replace(/\/$/, '') + '/products';
+
+function resolveApiUrl(endpoint: string) {
+  // If endpoint starts with /auth, use /api/auth; if /products, use /api/products; else, use base
+  if (endpoint.startsWith('/auth') || endpoint.startsWith('/users')) {
+    return API_BASE_URL.replace(/\/products$/, '') + endpoint;
+  }
+  if (endpoint.startsWith('/products') || endpoint.startsWith('/orders') || endpoint.startsWith('/receipts')) {
+    // Ensure /products is present
+    if (!API_BASE_URL.endsWith('/products')) {
+      return API_BASE_URL.replace(/\/$/, '') + '/products' + endpoint;
+    }
+    return API_BASE_URL + endpoint;
+  }
+  // fallback
+  return API_BASE_URL + endpoint;
 }
 
 export const useApi = () => {
@@ -13,7 +26,7 @@ export const useApi = () => {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<Response> => {
-    const url = `${API_BASE_URL}${endpoint}`
+    const url = resolveApiUrl(endpoint)
     
     const config: RequestInit = {
       ...options,

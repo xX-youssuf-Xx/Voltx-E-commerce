@@ -34,6 +34,8 @@ interface ProductInfo {
   is_offer?: boolean;
   status?: string;
   primary_media?: string;
+  sku?: string;
+  box_number?: string;
 }
 
 interface UserInfo {
@@ -64,6 +66,8 @@ const OrdersPage: React.FC = () => {
   // Add loading/error states for modal data
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [printMode, setPrintMode] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -79,40 +83,7 @@ const OrdersPage: React.FC = () => {
       .then(data => setOrders(Array.isArray(data) ? data : []))
       .catch((err) => setError(err.message || 'Failed to load orders'))
       .finally(() => setLoading(false));
-  }, [token, get]);
-
-  // Fetch customer and product info when details modal opens
-  useEffect(() => {
-    if (!showDetails || !selectedOrder) return;
-    setCustomer(null);
-    setProductsInfo([]);
-    // Fetch customer name
-    if (selectedOrder.customer_id) {
-      get(`/users/${selectedOrder.customer_id}`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => setCustomer(data))
-        .catch(() => setCustomer(null));
-    }
-    // Fetch product names
-    const productIds = Object.keys(selectedOrder.products).map(Number);
-    if (productIds.length > 0) {
-      fetch('/api/products/by-ids', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ ids: productIds })
-      })
-        .then(res => res.ok ? res.json() : [])
-        .then(data => setProductsInfo(data))
-        .catch(() => setProductsInfo([]));
-    }
-    // Set edit fields
-    setEditLocation(selectedOrder.shipping_location || '');
-    setEditPricePaid(selectedReceipt && selectedReceipt.price_paid ? String(selectedReceipt.price_paid) : '');
-    setEditPaymentMethod(selectedReceipt && selectedReceipt.payment_method ? selectedReceipt.payment_method : '');
-  }, [showDetails, selectedOrder, selectedReceipt, get, token]);
+  }, [token]);
 
   const handleViewDetails = async (order: Order) => {
     setSelectedOrder(order);
@@ -123,31 +94,23 @@ const OrdersPage: React.FC = () => {
     setModalLoading(true);
     setModalError(null);
     try {
-      // Fetch receipt
-      let receiptData: Receipt | null = null;
-      if (order.receipt_id) {
-        const res = await get(`/receipts/${order.receipt_id}`);
-        if (res.ok) {
-          receiptData = await res.json();
-          setSelectedReceipt(receiptData);
-          setEditPricePaid(receiptData.price_paid ? String(receiptData.price_paid) : '');
-          setEditPaymentMethod(receiptData.payment_method || '');
-        }
-      }
-      // Fetch customer name
-      if (order.customer_id) {
-        const res = await get(`/users/${order.customer_id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCustomer(data);
-        } else {
-          setCustomer(null);
-        }
-      }
-      // Fetch product names
-      const productIds = Object.keys(order.products).map(Number);
+      // Fetch all details in one request (order, customer, receipt)
+      const apiBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') + '/products';
+      const res = await fetch(`${apiBase}/orders/${order.order_id}/details`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Failed to load order details');
+      const data = await res.json();
+      setSelectedOrder(data.order);
+      setCustomer(data.customer);
+      setSelectedReceipt(data.receipt);
+      setEditLocation(data.order.shipping_location || '');
+      setEditPricePaid(data.receipt && data.receipt.price_paid ? String(data.receipt.price_paid) : '');
+      setEditPaymentMethod(data.receipt && data.receipt.payment_method ? data.receipt.payment_method : '');
+      // Fetch product details separately for the products section
+      const productIds = Object.keys(data.order.products).map(Number);
       if (productIds.length > 0) {
-        const res = await fetch('/api/products/by-ids', {
+        const byIdsRes = await fetch(`${apiBase}/by-ids`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -155,14 +118,15 @@ const OrdersPage: React.FC = () => {
           },
           body: JSON.stringify({ ids: productIds })
         });
-        if (res.ok) {
-          const data = await res.json();
-          setProductsInfo(data);
+        if (byIdsRes.ok) {
+          const products = await byIdsRes.json();
+          setProductsInfo(products);
         } else {
           setProductsInfo([]);
         }
+      } else {
+        setProductsInfo([]);
       }
-      setEditLocation(order.shipping_location || '');
       setModalLoading(false);
     } catch (err: any) {
       setModalError('Failed to load order details.');
@@ -170,9 +134,9 @@ const OrdersPage: React.FC = () => {
     }
   };
 
-  const handleEdit = () => setEditMode(true);
+  const handleEdit = () => setShowEditModal(true);
   const handleCancelEdit = () => {
-    setEditMode(false);
+    setShowEditModal(false);
     setEditLocation(selectedOrder?.shipping_location || '');
     setEditPricePaid(selectedReceipt && selectedReceipt.price_paid ? String(selectedReceipt.price_paid) : '');
     setEditPaymentMethod(selectedReceipt && selectedReceipt.payment_method ? selectedReceipt.payment_method : '');
@@ -182,15 +146,12 @@ const OrdersPage: React.FC = () => {
     if (!selectedOrder || !selectedReceipt) return;
     setSaving(true);
     try {
-      // Update order location
       await put(`/orders/${selectedOrder.order_id}`, { shipping_location: editLocation });
-      // Update receipt
       await put(`/receipts/${selectedReceipt.receipt_id}`, { price_paid: Number(editPricePaid), payment_method: editPaymentMethod });
-      // Refresh order list
       const res = await get('/orders');
       const data = await res.json();
       setOrders(Array.isArray(data) ? data : []);
-      setEditMode(false);
+      setShowEditModal(false);
     } catch (err) {
       alert('Failed to save changes');
     } finally {
@@ -216,12 +177,29 @@ const OrdersPage: React.FC = () => {
     }
   };
 
+  // Print only the modal
   const handlePrint = () => {
-    window.print();
+    setPrintMode(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setPrintMode(false), 500);
+    }, 100);
   };
 
   return (
     <div className="p-6">
+      <style>{`
+        .modal-scrollbar::-webkit-scrollbar { display: none; }
+        .modal-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+        @media print {
+          body * { visibility: hidden !important; }
+          #order-modal-print, #order-modal-print * { visibility: visible !important; }
+          #order-modal-print { position: absolute !important; left: 0; top: 0; width: 80mm !important; min-width: 80mm !important; max-width: 80mm !important; background: white; box-shadow: none; border: none; }
+          #order-modal-print .print-hide, .print-hide { display: none !important; }
+          #order-modal-print .print-receipt { display: block !important; width: 100% !important; }
+          #order-modal-print .print-products { display: none !important; }
+        }
+      `}</style>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-blue-800">Orders</h1>
       </div>
@@ -271,174 +249,187 @@ const OrdersPage: React.FC = () => {
         )}
       </div>
       {showDetails && selectedOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 print:bg-transparent print:relative print:inset-auto">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 min-w-[400px] max-w-2xl w-full relative print:shadow-none print:p-0 print:rounded-none border border-blue-100">
+        <div className={`fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 print:bg-transparent print:relative print:inset-auto ${printMode ? 'print:bg-white' : ''}`}>
+          <div
+            id="order-modal-print"
+            className="bg-white rounded-xl shadow-xl p-0 min-w-[350px] max-w-md w-full relative border border-blue-200 flex flex-col modal-scrollbar"
+            style={{ maxHeight: '70vh', overflowY: 'auto' }}
+          >
             <button
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 print:hidden text-3xl font-bold"
+              className="absolute top-3 right-3 text-gray-400 hover:text-blue-700 print:hidden text-3xl font-bold z-10 print-hide"
               onClick={() => setShowDetails(false)}
               aria-label="Close"
             >
               &times;
             </button>
-            {modalLoading ? (
-              <div className="flex flex-col items-center justify-center min-h-[200px]">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
-                <div className="text-blue-700 font-semibold">Loading order details...</div>
+            {/* Order Info Section */}
+            <div className="bg-white rounded-lg shadow border border-blue-100 mb-3 mx-4 mt-6 p-4 flex flex-col gap-1 print-hide">
+              <div className="text-base font-semibold text-blue-700 mb-1 flex items-center gap-2"><span className="i-heroicons-clipboard-document text-blue-400" />Order Info</div>
+              <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                <span className="font-semibold">Order ID:</span> <span>{selectedOrder.order_id}</span>
               </div>
-            ) : modalError ? (
-              <div className="text-red-600 font-semibold text-center min-h-[200px] flex items-center justify-center">{modalError}</div>
-            ) : (
-              <>
-                <div className="flex items-center mb-6 border-b pb-4 gap-4">
-                  <img src={LOGO_URL} alt="Logo" className="h-16 w-16 rounded-lg border border-blue-200 bg-white object-contain shadow" onError={e => (e.currentTarget.style.display = 'none')} />
-                  <div>
-                    <h2 className="text-2xl font-bold text-blue-800">Order #{selectedOrder.order_id}</h2>
-                    <div className="text-gray-500 text-sm">{new Date(selectedOrder.created_at).toLocaleString()}</div>
+              {selectedReceipt && (
+                <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                  <span className="font-semibold">Receipt ID:</span> <span>{selectedReceipt.receipt_id}</span>
+                </div>
+              )}
+              <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                <span className="font-semibold">Created At:</span> <span>{new Date(selectedOrder.created_at).toLocaleString()}</span>
+              </div>
+              {selectedReceipt && (
+                <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                  <span className="font-semibold">Receipt Created:</span> <span>{new Date(selectedReceipt.created_at).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                <span className="font-semibold">Order Type:</span> <span>{selectedOrder.order_type}</span>
+              </div>
+              <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                <span className="font-semibold">Customer:</span> <span className="text-blue-700 font-medium">{customer ? customer.name : (selectedOrder.customer_id ?? '-')}</span>
+                {customer && <span className="ml-2 text-gray-500 text-xs">({customer.email})</span>}
+              </div>
+              <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                <span className="font-semibold">Shipping Location:</span> <span>{selectedOrder.shipping_location || '-'}</span>
+              </div>
+            </div>
+            {/* Products Section (hide for print) */}
+            <div className="bg-white rounded-lg shadow border border-blue-100 mb-3 mx-4 p-4 flex flex-col gap-2 print-products print-hide">
+              <div className="text-base font-semibold text-blue-700 mb-1 flex items-center gap-2"><span className="i-heroicons-cube text-blue-400" />Products</div>
+              <ul className="space-y-2">
+                {Object.entries(selectedOrder.products).map(([pid, qty]) => {
+                  const prod = productsInfo.find(p => p.product_id === Number(pid));
+                  // Debug log for image path
+                  if (prod) console.log('Product image path:', prod.primary_media);
+                  return (
+                    <li key={pid} className="flex items-center gap-2 bg-blue-50 rounded-lg p-2 border border-blue-100">
+                      {prod && prod.primary_media ? (
+                        <img
+                          src={prod.primary_media}
+                          alt={prod.name}
+                          className="w-12 h-12 object-cover rounded border border-blue-200 bg-white"
+                          onError={e => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-blue-100 rounded flex items-center justify-center text-xs text-blue-400">No Image</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-blue-800 text-sm">{prod ? prod.name : `Product #${pid}`}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            {/* Payment Section (print only this) */}
+            <div className="bg-white rounded-lg shadow border border-blue-100 mb-3 mx-4 p-4 flex flex-col gap-1 print-receipt" style={{ width: '100%' }}>
+              <div className="text-base font-semibold text-blue-700 mb-1 flex items-center gap-2"><span className="i-heroicons-credit-card text-blue-400" />Payment</div>
+              {selectedReceipt && (
+                <>
+                  <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                    <span className="font-semibold">Payment Method:</span> <span>{selectedReceipt.payment_method || '-'}</span>
                   </div>
-                </div>
-                <div className="mb-3 text-gray-700 flex items-center gap-2">
-                  <span className="font-semibold">Customer:</span> <span className="text-blue-700 font-medium">{customer ? customer.name : (selectedOrder.customer_id ?? '-')}</span>
-                </div>
-                <div className="mb-3 text-gray-700 flex items-center gap-2">
-                  <span className="font-semibold">Order Type:</span> <span>{selectedOrder.order_type}</span>
-                </div>
-                <div className="mb-3 text-gray-700 flex items-center gap-2">
-                  <span className="font-semibold">Shipping Location:</span> {editMode ? (
-                    <input
-                      className="border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-300"
-                      value={editLocation}
-                      onChange={e => setEditLocation(e.target.value)}
-                    />
-                  ) : (
-                    <span>{selectedOrder.shipping_location || '-'}</span>
-                  )}
-                </div>
-                <div className="mb-3 text-gray-700">
-                  <span className="font-semibold">Products:</span>
-                  <ul className="ml-4 mt-2 space-y-2">
-                    {Object.entries(selectedOrder.products).map(([pid, qty]) => {
-                      const prod = productsInfo.find(p => p.product_id === Number(pid));
-                      return (
-                        <li key={pid} className="flex items-center gap-3 bg-gray-50 rounded-lg p-2 border border-gray-100">
-                          {prod && prod.primary_media ? (
-                            <img
-                              src={prod.primary_media.startsWith('http') ? prod.primary_media : prod.primary_media.startsWith('/') ? prod.primary_media : `/api/media/${prod.primary_media}`}
-                              alt={prod.name}
-                              className="w-12 h-12 object-cover rounded border border-gray-200 bg-white"
-                              onError={e => (e.currentTarget.style.display = 'none')}
-                            />
-                          ) : (
-                            <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">No Image</div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <span className="font-semibold text-blue-800">{prod ? prod.name : `Product #${pid}`}</span> x {qty}
-                            {prod && (
-                              <span className="ml-2 text-xs text-gray-500">@ {typeof prod.sell_price === 'number' && !isNaN(prod.sell_price) ? prod.sell_price.toFixed(2) : '-' } EGP</span>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-                <div className="mb-3 text-gray-700 flex items-center gap-2">
-                  <span className="font-semibold">Discount:</span> {selectedOrder.discount_code ? (
-                    <span className="text-green-700 font-semibold">{selectedOrder.discount_code} ({selectedOrder.discount} EGP)</span>
-                  ) : (
-                    <span className="text-gray-500">-</span>
-                  )}
-                </div>
-                <div className="mb-3 text-gray-700 flex items-center gap-2">
-                  <span className="font-semibold">Total Price:</span> <span className="text-blue-700 font-bold">{
-                    typeof selectedOrder.total_price === 'number' && !isNaN(selectedOrder.total_price)
-                      ? selectedOrder.total_price.toFixed(2)
-                      : (Number.isFinite(Number(selectedOrder.total_price)) && !isNaN(Number(selectedOrder.total_price))
-                          ? Number(selectedOrder.total_price).toFixed(2)
-                          : '-')
-                  }</span>
-                </div>
-                {selectedReceipt && (
-                  <>
-                    <div className="mb-3 text-gray-700 flex items-center gap-2">
-                      <span className="font-semibold">Payment Method:</span> {editMode ? (
-                        <input
-                          className="border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-300"
-                          value={editPaymentMethod}
-                          onChange={e => setEditPaymentMethod(e.target.value)}
-                        />
-                      ) : (
-                        <span>{selectedReceipt.payment_method || '-'}</span>
-                      )}
-                    </div>
-                    <div className="mb-3 text-gray-700 flex items-center gap-2">
-                      <span className="font-semibold">Price Paid:</span> {editMode ? (
-                        <input
-                          className="border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-300"
-                          value={editPricePaid}
-                          onChange={e => setEditPricePaid(e.target.value)}
-                          type="number"
-                        />
-                      ) : (
-                        <span className="text-blue-700 font-bold">{
-                          typeof selectedReceipt.price_paid === 'number' && !isNaN(selectedReceipt.price_paid)
-                            ? selectedReceipt.price_paid.toFixed(2)
-                            : (Number.isFinite(Number(selectedReceipt.price_paid)) && !isNaN(Number(selectedReceipt.price_paid))
-                                ? Number(selectedReceipt.price_paid).toFixed(2)
-                                : '-')
-                        }</span>
-                      )}
-                    </div>
-                    <div className="mb-3 text-gray-700 flex items-center gap-2">
-                      <span className="font-semibold">Receipt ID:</span> <span>{selectedReceipt.receipt_id}</span>
-                    </div>
-                    <div className="mb-3 text-gray-700 flex items-center gap-2">
-                      <span className="font-semibold">Receipt Created At:</span> <span>{new Date(selectedReceipt.created_at).toLocaleString()}</span>
-                    </div>
-                  </>
+                  <div className="mb-1 text-gray-700 flex items-center gap-2 text-sm">
+                    <span className="font-semibold">Price Paid:</span> <span className="text-blue-700 font-bold">{
+                      typeof selectedReceipt.price_paid === 'number' && !isNaN(selectedReceipt.price_paid)
+                        ? selectedReceipt.price_paid.toFixed(2)
+                        : (Number.isFinite(Number(selectedReceipt.price_paid)) && !isNaN(Number(selectedReceipt.price_paid))
+                            ? Number(selectedReceipt.price_paid).toFixed(2)
+                            : '-')
+                    }</span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center gap-2 text-sm mt-2">
+                <span className="font-semibold text-blue-700">Discount:</span> {selectedOrder.discount_code ? (
+                  <span className="text-green-700 font-semibold">{selectedOrder.discount_code} ({selectedOrder.discount} EGP)</span>
+                ) : (
+                  <span className="text-gray-500">-</span>
                 )}
-                <div className="flex gap-3 mt-8 print:hidden justify-end">
-                  {!editMode ? (
-                    <>
-                      <button
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold shadow-md transition-all duration-150"
-                        onClick={handleEdit}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 font-semibold shadow-md transition-all duration-150"
-                        onClick={handleDelete}
-                        disabled={deleting}
-                      >
-                        {deleting ? 'Deleting...' : 'Delete'}
-                      </button>
-                      <button
-                        className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 font-semibold shadow-md transition-all duration-150"
-                        onClick={handlePrint}
-                      >
-                        Print Receipt
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold shadow-md transition-all duration-150"
-                        onClick={handleSaveEdit}
-                        disabled={saving}
-                      >
-                        {saving ? 'Saving...' : 'Save'}
-                      </button>
-                      <button
-                        className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-300 font-semibold shadow-md transition-all duration-150"
-                        onClick={handleCancelEdit}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                </div>
-              </>
-            )}
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-semibold text-blue-700">Total Price:</span> <span className="text-blue-700 font-bold">{
+                  typeof selectedOrder.total_price === 'number' && !isNaN(selectedOrder.total_price)
+                    ? selectedOrder.total_price.toFixed(2)
+                    : (Number.isFinite(Number(selectedOrder.total_price)) && !isNaN(Number(selectedOrder.total_price))
+                        ? Number(selectedOrder.total_price).toFixed(2)
+                        : '-')
+                }</span>
+              </div>
+            </div>
+            {/* Action Buttons */}
+            <div className="flex gap-2 mt-2 print:hidden justify-end sticky bottom-0 bg-white py-2 border-t border-blue-100 px-6 print-hide">
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold shadow-md transition-all duration-150"
+                onClick={handleEdit}
+              >
+                Edit
+              </button>
+              <button
+                className="bg-gray-200 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-100 font-semibold shadow-md transition-all duration-150"
+                onClick={handlePrint}
+              >
+                Print Receipt
+              </button>
+              <button
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-semibold shadow-md transition-all duration-150"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Modal */}
+      {showEditModal && selectedOrder && selectedReceipt && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-xs relative flex flex-col gap-4">
+            <button
+              className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+              onClick={handleCancelEdit}
+              aria-label="Close Edit Modal"
+            >
+              &times;
+            </button>
+            <h3 className="text-lg font-bold text-blue-700 mb-2">Edit Order</h3>
+            <label className="text-sm font-semibold text-gray-700">Shipping Location
+              <input
+                className="border rounded px-2 py-1 text-sm w-full mt-1 focus:ring-2 focus:ring-blue-300"
+                value={editLocation}
+                onChange={e => setEditLocation(e.target.value)}
+              />
+            </label>
+            <label className="text-sm font-semibold text-gray-700">Payment Method
+              <input
+                className="border rounded px-2 py-1 text-sm w-full mt-1 focus:ring-2 focus:ring-blue-300"
+                value={editPaymentMethod}
+                onChange={e => setEditPaymentMethod(e.target.value)}
+              />
+            </label>
+            <label className="text-sm font-semibold text-gray-700">Price Paid
+              <input
+                className="border rounded px-2 py-1 text-sm w-full mt-1 focus:ring-2 focus:ring-blue-300"
+                value={editPricePaid}
+                onChange={e => setEditPricePaid(e.target.value)}
+                type="number"
+              />
+            </label>
+            <div className="flex gap-2 mt-2 justify-end">
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-semibold shadow-md transition-all duration-150"
+                onClick={handleSaveEdit}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 font-semibold shadow-md transition-all duration-150"
+                onClick={handleCancelEdit}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
