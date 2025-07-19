@@ -44,8 +44,6 @@ interface UserInfo {
   email: string;
 }
 
-const LOGO_URL = '/voltx.jpg';
-
 const OrdersPage: React.FC = () => {
   const { token } = useAuth();
   const { get, put, delete: del } = useApi();
@@ -57,15 +55,12 @@ const OrdersPage: React.FC = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [customer, setCustomer] = useState<UserInfo | null>(null);
   const [productsInfo, setProductsInfo] = useState<ProductInfo[]>([]);
-  const [editMode, setEditMode] = useState(false);
   const [editLocation, setEditLocation] = useState('');
   const [editPricePaid, setEditPricePaid] = useState('');
   const [editPaymentMethod, setEditPaymentMethod] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // Add loading/error states for modal data
-  const [modalLoading, setModalLoading] = useState(false);
-  const [modalError, setModalError] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [printMode, setPrintMode] = useState(false);
 
@@ -91,8 +86,6 @@ const OrdersPage: React.FC = () => {
     setSelectedReceipt(null);
     setCustomer(null);
     setProductsInfo([]);
-    setModalLoading(true);
-    setModalError(null);
     try {
       // Fetch all details in one request (order, customer, receipt)
       const apiBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') + '/products';
@@ -127,10 +120,8 @@ const OrdersPage: React.FC = () => {
       } else {
         setProductsInfo([]);
       }
-      setModalLoading(false);
     } catch (err: any) {
-      setModalError('Failed to load order details.');
-      setModalLoading(false);
+      alert('Failed to load order details.');
     }
   };
 
@@ -296,7 +287,7 @@ const OrdersPage: React.FC = () => {
             <div className="bg-white rounded-lg shadow border border-blue-100 mb-3 mx-4 p-4 flex flex-col gap-2 print-products print-hide">
               <div className="text-base font-semibold text-blue-700 mb-1 flex items-center gap-2"><span className="i-heroicons-cube text-blue-400" />Products</div>
               <ul className="space-y-2">
-                {Object.entries(selectedOrder.products).map(([pid, qty]) => {
+                {Object.entries(selectedOrder.products).map(([pid]) => {
                   const prod = productsInfo.find(p => p.product_id === Number(pid));
                   // Debug log for image path
                   if (prod) console.log('Product image path:', prod.primary_media);
